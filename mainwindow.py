@@ -23,7 +23,7 @@ class Reyon:
 
 
 class Employee:
-    def __init__(self,personelID=None, Persname=None):
+    def __init__(self, personelID=None, Persname=None):
         self.personelID = personelID
         self.Persname = Persname
 
@@ -31,13 +31,11 @@ class Employee:
 product_names = []
 reyons = []
 employees = []
+connection_str = 'DSN=GULSEVEN;UID=hakan;PWD=ZXCvbn123'
 
 
 def load_products(self, ID):
-    str = 'DRIVER={Easysoft ODBC-SQL Server};SERVER=192.168.1.101\\SQLEXPRESS;USER=hakan;PASSWORD=ZXCvbn123;DATABASE=GULSEVEN;'
-    str = 'DSN=GULSEVEN;UID=hakan;PWD=ZXCvbn123'
-
-    conn = pyodbc.connect(str)
+    conn = pyodbc.connect(connection_str)
     cursor = conn.cursor()
     cursor.execute("Select  TeraziID,productName, productRetailPrice from [dbo].[ProductModels]"
                    " left outer join [dbo].[TeraziScreenMapping] on "
@@ -57,9 +55,7 @@ class loadTables:
 
     def __init__(self):
         load_products(self, 1)
-        str = 'DRIVER={Easysoft ODBC-SQL Server};SERVER=192.168.1.101\\SQLEXPRESS;USER=hakan;PASSWORD=ZXCvbn123;LANGUAGE=Turkish;DATABASE=GULSEVEN;'
-        str = 'DSN=GULSEVEN;UID=hakan;PWD=ZXCvbn123'
-        conn = pyodbc.connect(str)
+        conn = pyodbc.connect(connection_str)
         cursor = conn.cursor()
         cursor.execute("Select  TeraziID, teraziName from [dbo].[TeraziTable]")
         for row in cursor:
@@ -76,12 +72,11 @@ class loadTables:
             employees.append(employeeObj)
 
 
-
 class MainWindow(tk.Tk):
 
     def __init__(self):
-
         tk.Tk.__init__(self)
+        windows_env = 1
         serial_data = ''
         filter_data = ''
         update_period = 60
@@ -102,7 +97,10 @@ class MainWindow(tk.Tk):
         t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
         t2.daemon = True
         t2.start()
-        connect(new_data, 9600, 'USB0')
+        if windows_env:
+            connect(new_data, 1, 9600, '5')
+        else:
+            connect(new_data, 2, 9600, 'USB0')
 
     def employee_frame_def(self):
         row_size, col_size = 4, 2
@@ -126,7 +124,8 @@ class MainWindow(tk.Tk):
         self.display_frame.pack()
         row_size, col_size = 8, 4
         for btn_no, Product in enumerate(product_names):
-            button = Button(self.product_frame, font=("Arial Bold", 12), wraplength=150, text=Product.productName, width=15, height=3)
+            button = Button(self.product_frame, font=("Arial Bold", 12), wraplength=150, text=Product.productName,
+                            width=15, height=3)
             button.configure(command=lambda btn=button: self.product_button_clicked(btn))
             button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
         self.product_frame.pack()
@@ -137,7 +136,6 @@ class MainWindow(tk.Tk):
                         height=3)
         button.configure(command=lambda btn=button: self.product_button_clicked(btn))
         button.pack()
-
 
     def checkreyon(self, event: object):
         tt = self.select_reyon.get()
@@ -159,7 +157,7 @@ class MainWindow(tk.Tk):
         my_text = btn.cget("text")
 
 
-def connect(new_data, baud, port):
+def connect(new_data, env, baud, port):
     """The function initiates the Connection to the UART device with the Port and Buad fed through the Entry
     boxes in the application.
 
@@ -171,23 +169,19 @@ def connect(new_data, baud, port):
     The other Parts are self explanatory.
     """
 
-    version_ = 2
     global serial_object
 
     try:
-        if version_ == 2:
+        if env == 2:
             try:
                 serial_object = serial.Serial('/dev/tty' + str(port), baud)
-
             except:
                 print("Cant Open Specified Port")
-        elif version_ == 1:
+        elif env == 1:
             serial_object = serial.Serial('COM' + str(port), baud)
-
     except ValueError:
         print("Enter Baud and Port")
         return
-
     t1 = threading.Thread(target=get_data,
                           args=(new_data,))
     t1.daemon = True
@@ -238,7 +232,7 @@ def update_gui(scale_display, new_data):
         if filter_data:
             scale_display.delete(1.0, END)
             mydata = filter_data
-            mydata = mydata.rjust(25)
+            mydata = mydata.rjust(24)
             scale_display.insert(END, mydata)
 
 
