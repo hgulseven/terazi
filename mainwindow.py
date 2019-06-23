@@ -159,6 +159,7 @@ class MainWindow(tk.Tk):
         my_text = btn.cget("text")
 
 
+
 def connect(new_data, baud, port):
     """The function initiates the Connection to the UART device with the Port and Buad fed through the Entry
     boxes in the application.
