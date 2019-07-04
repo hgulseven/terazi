@@ -13,6 +13,7 @@ glb_reyons = []
 glb_employees = []
 glb_sales = []
 glb_connection_str = 'DSN=GULSEVEN;UID=hakan;PWD=ZXCvbn123'
+"""glb_connection_str = 'DRIVER={FreeTDS};SERVER=192.168.1.106;PORT=51012;DATABASE=GULSEVEN;UID=hakan;PWD=ZXCvbn123;TDS_Version=7.2'"""
 glb_scaleId = 0
 glb_employeeselected = ''
 glb_sales_line_id = 1
@@ -47,16 +48,17 @@ class SalesCounter(object):
     def getcounter(self):
         conn = pyodbc.connect(glb_connection_str)
         cursor = conn.cursor()
-        cursor.execute("select counter from salesCounter where salesDate=?", datetime.date.today())
+        mydate = datetime.date.today()
+        cursor.execute("select counter from salesCounter where salesDate=?", mydate.strftime('%Y-%m-%d'))
         number_of_rows = 0
         for row in cursor:
             number_of_rows = number_of_rows + 1
             self.counter = row[0] + 1
         if number_of_rows > 0:
-            cursor.execute("Update salesCounter set counter=? where salesDate=?", self.counter, datetime.date.today())
+            cursor.execute("Update salesCounter set counter=? where salesDate=?", self.counter, mydate.strftime('%Y-%m-%d'))
         else:
             self.counter = 1
-            cursor.execute("Insert into salesCounter (salesDate, counter) values (?,?)", datetime.date.today(),
+            cursor.execute("Insert into salesCounter (salesDate, counter) values (?,?)", mydate.strftime('%Y-%m-%d'),
                            self.counter)
         cursor.commit()
         cursor.close()
@@ -66,7 +68,8 @@ class SalesCounter(object):
 class Sales(object):
     def __init__(self, salesID=None, salesLineID=None, personelID=None, productID=None, productName=None,
                  retailPrice=None, amount=None, typeOfCollection=None):
-        self.saleDate = datetime.date.today()
+        mydate=datetime.date.today()
+        self.saleDate = mydate.strftime('%Y-%m-%d')
         self.salesID = salesID
         self.salesLineID = salesLineID
         self.personelID = personelID
@@ -92,14 +95,14 @@ def sales_save(typeOfCollection):
     conn = pyodbc.connect(glb_connection_str)
     cursor = conn.cursor()
     for salesObj in glb_sales:
-        cursor.execute("select count(*) from dbo.SalesModels where personelID=? and typeOfCollection=? and salesLineID=?", salesObj.personelID, typeOfCollection, salesObj.salesLineID)
+        cursor.execute("select count(*) from dbo.SalesModels where personelID=? and typeOfCollection=? and salesLineID=?", salesObj.personelID, -1, salesObj.salesLineID)
         number_of_rows = cursor.fetchone()[0]
         if number_of_rows > 0:
             cursor.execute(
                 "update dbo.SalesModels set saleDate=?, salesID=?,  salesLineID=?, personelID=?, productID=?, amount=?,"
                 "typeOfCollection=? where personelID=? and typeOfCollection=? and salesID=? and salesLineID=?"
                 , salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.productID,
-                salesObj.amount, typeOfCollection, salesObj.personelID, typeOfCollection, salesObj.salesID, salesObj.salesLineID)
+                salesObj.amount, typeOfCollection, salesObj.personelID, -1, salesObj.salesID, salesObj.salesLineID)
         else:
             cursor.execute(
                 "insert into dbo.SalesModels (saleDate, salesID,  salesLineID, personelID, productID, amount, typeOfCollection) values (?,?,?,?,?,?,?)"
@@ -107,7 +110,6 @@ def sales_save(typeOfCollection):
                 salesObj.amount, typeOfCollection)
     conn.commit()
     cursor.close()
-
 
 def sales_load(typeOfCollection):
     global glb_customer_no
@@ -286,10 +288,9 @@ class MainWindow(tk.Tk):
         self.entry_products.place(relx=0.010, rely=0.02, relheight=0.84, relwidth=0.700)
         self.entry_products.configure(font=font11)
         self.entry_products.configure(takefocus="")
-        self.entry_products.configure(cursor="ibeam")
         self.entry_calculatedtotal = tk.Text(self.products_sold_frame)
         self.entry_calculatedtotal.place(relx=0.720, rely=0.02, relheight=0.84, relwidth=0.240)
-        self.entry_calculatedtotal.configure(font=font11, takefocus="", cursor="ibeam")
+        self.entry_calculatedtotal.configure(font=font11, takefocus="")
         self.label_sum = tk.Label(self.products_sold_frame)
         self.label_sum.place(relx=0.040, rely=0.88, relheight=0.10, relwidth=0.300)
         self.label_sum.configure(background="#d9d9d9")
@@ -420,6 +421,7 @@ class MainWindow(tk.Tk):
         global glb_employeeselected
         global glb_customer_no
 
+        sales_save(-2)
         self.message_box_text.delete("1.0", END)
         glb_sales.clear()
         self.update_products_sold()
@@ -437,7 +439,7 @@ class MainWindow(tk.Tk):
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, "0")
         glb_sales_line_id = 1
-        self.change_user_clicked()
+        self.btn_change_user_clicked()
 
     def btn_dara_clicked(self):
         global glb_base_weight
@@ -554,7 +556,7 @@ class MainWindow(tk.Tk):
         top.geometry("800x480+1571+152")
         top.title("Terazi Ara Yüzü")
         top.configure(background="#d9d9d9")
-        windows_env = 1
+        windows_env = 0
         serial_data = ''
         filter_data = ''
         update_period = 60
