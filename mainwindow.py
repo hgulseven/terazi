@@ -240,7 +240,7 @@ class MainWindow(tk.Tk):
         self.display_frame.place(relx=0.0, rely=0.0, relheight=0.100, relwidth=0.994)
         self.customer_no = tk.Text(self.display_frame, height=1, width=4, font=("Arial Bold", 25),
                                    bg='dark blue', fg="white")
-        self.scale_display = tk.Text(self.display_frame, height=1, width=14, font=("Arial Bold", 25),
+        self.scale_display = tk.Text(self.display_frame, height=1, width=12, font=("Arial Bold", 25),
                                      bg='dark green', fg="white")
         self.scale_type = tk.Text(self.display_frame, height=1, width=3, font=("Arial Bold", 25),
                                   bg='dark green', fg="white")
@@ -249,7 +249,7 @@ class MainWindow(tk.Tk):
         reyon_names = []
         for index, reyonObj in enumerate(glb_reyons):
             reyon_names.append(reyonObj.ReyonName)
-        self.select_reyon = Combobox(self.display_frame, font=("Arial Bold", 25), values=reyon_names)
+        self.select_reyon = Combobox(self.display_frame, font=("Arial Bold", 22), values=reyon_names)
         self.select_reyon.bind("<<ComboboxSelected>>", self.checkreyon)
         self.select_reyon
         self.select_reyon.grid(row=0, column=0)
@@ -262,9 +262,9 @@ class MainWindow(tk.Tk):
         font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
 
-        self.product_frame.place(relx=0.23, rely=0.110, relheight=0.573, relwidth=0.760)
+        self.product_frame.place(relx=0.28, rely=0.110, relheight=0.573, relwidth=0.700)
         self.product_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
-        row_size, col_size = 8, 4
+        row_size, col_size = 8, 3
         for btn_no, prod in enumerate(glb_product_names):
             button = tk.Button(self.product_frame, text=prod.productName)
             button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
@@ -280,7 +280,7 @@ class MainWindow(tk.Tk):
                  "roman -underline 0 -overstrike 0"
         font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
                 " -underline 0 -overstrike 0"
-        self.products_sold_frame.place(relx=0.0, rely=0.110, relheight=0.573, relwidth=0.220)
+        self.products_sold_frame.place(relx=0.0, rely=0.110, relheight=0.573, relwidth=0.280)
         self.products_sold_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9",
                                            highlightbackground="#d9d9d9")
         self.products_sold_frame.configure(highlightcolor="black", width=155)
@@ -445,14 +445,14 @@ class MainWindow(tk.Tk):
         global glb_base_weight
         glb_base_weight = float(self.scale_display.get("1.0", END).strip("\n"))
         self.scale_display.delete("1.0", END)
-        self.scale_display.insert(END, "0.000".rjust(24))
+        self.scale_display.insert(END, "0.000".rjust(20))
 
     def btn_cleardara_clicked(self):
         global glb_base_weight
         glb_base_weight = 0
         floatval = float(filter_data) - glb_base_weight
-        mydata = "{:2f}".format(floatval)
-        mydata = mydata.rjust(24)
+        mydata = "{:10.3f}".format(floatval)
+        mydata = mydata.rjust(20)
         self.scale_display.delete("1.0", END)
         self.scale_display.insert(END, mydata)
 
@@ -529,7 +529,7 @@ class MainWindow(tk.Tk):
             myData = "{:.2f}".format(calculated_price).rjust(8, ' ') + "\n"
             self.entry_calculatedtotal.insert(END, myData)
         self.entry_sum.delete("1.0", END)
-        self.entry_sum.insert(END, "{:.2f}".format(sum_calculated_price).rjust(8, ' '))
+        self.entry_sum.insert(END, "{:5.2f}".format(sum_calculated_price).rjust(8, ' '))
 
     def product_button_clicked(self, btn):
         global glb_sales_line_id
@@ -671,8 +671,8 @@ def update_gui(scale_display, new_data):
         if filter_data:
             scale_display.delete(1.0, END)
             floatval = float(filter_data) - glb_base_weight
-            mydata = "{:3f}".format(floatval)
-            mydata = mydata.rjust(24)
+            mydata = "{:10.3f}".format(floatval)
+            mydata = mydata.rjust(20)
             scale_display.insert(END, mydata)
 
 
