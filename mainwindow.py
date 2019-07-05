@@ -118,7 +118,11 @@ def sales_load(typeOfCollection):
     cursor = conn.cursor()
     employee_id = [x.personelID for x in glb_employees if x.Persname == glb_employeeselected]
     cursor.execute(
-        "select  saleDate, salesID,  salesLineID, personelID, productID, amount, typeOfCollection from dbo.SalesModels where personelID=? and typeOfCollection=?",
+        "select  saleDate, salesID,  salesLineID,personelID, SalesModels.productID, amount, productRetailPrice, "
+        "ProductName, typeOfCollection from dbo.SalesModels "
+        "left outer join ProductModels "
+        "on (SalesModels.productID= ProductModels.productID) "
+        "where personelID=? and typeOfCollection=?",
         employee_id[0], typeOfCollection)
     glb_sales_line_id = 1
     for row in cursor:
@@ -130,9 +134,9 @@ def sales_load(typeOfCollection):
         salesObj.personelID = row[3]
         salesObj.productID = row[4]
         salesObj.amount = row[5]
-        salesObj.typeOfCollection = row[6]
-        salesObj.retailPrice = [x.price for x in glb_product_names if x.productID == salesObj.productID][0]
-        salesObj.productName = [x.productName for x in glb_product_names if x.productID == salesObj.productID][0]
+        salesObj.retailPrice = row[6]
+        salesObj.productName = row[7]
+        salesObj.typeOfCollection = row[8]
         glb_sales.append(salesObj)
         glb_sales_line_id = glb_sales_line_id + 1
     cursor.close
