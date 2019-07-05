@@ -232,14 +232,14 @@ class MainWindow(tk.Tk):
         self.paging_frame.place(relx=0.28, rely=0.560, relheight=0.120, relwidth=0.700)
         self.paging_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
         next_button = tk.Button(self.paging_frame, text="Sonraki Sayfa")
-        next_button.configure(activebackground="#ececec", activeforeground="#000000", background="red")
+        next_button.configure(activebackground="#ececec", activeforeground="#000000", background="dark red")
         next_button.configure(disabledforeground="#a3a3a3", font=font11, foreground="white")
         next_button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=14, height=2,
                          wraplength=130)
         next_button.configure(command=lambda btn=next_button: self.next_product_button_clicked())
         next_button.grid(row=0, column=2)
         previous_button = tk.Button(self.paging_frame, text="Önceki Sayfa")
-        previous_button.configure(activebackground="#ececec", activeforeground="#000000", background="red")
+        previous_button.configure(activebackground="#ececec", activeforeground="#000000", background="dark red")
         previous_button.configure(disabledforeground="#a3a3a3", font=font11, foreground="white")
         previous_button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=14, height=2,
                          wraplength=130)
