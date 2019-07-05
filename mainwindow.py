@@ -18,7 +18,7 @@ glb_scaleId = 0
 glb_employeeselected = ''
 glb_sales_line_id = 1
 glb_base_weight = 0
-
+glb_product_page = 0
 
 class Product(object):
     def __init__(self, productID=None, productName=None, price=None, teraziID=None):
@@ -204,33 +204,50 @@ def vp_start_gui():
 
 class MainWindow(tk.Tk):
 
+    def message_box_frame_def(self):
+        global top
+        self.message_box_frame.place(relx=0.0, rely=0.900, relheight=0.10, relwidth=0.994)
+        self.message_box_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9")
+        self.message_box_frame.configure(highlightbackground="#f0f0f0", width=795)
+        self.message_box_text = tk.Text(self.message_box_frame, height=1, width=80, font=("Arial Bold", 12),
+                                    bg='dark red', fg="white")
+        self.message_box_text.place(relx=0.0, rely=0.0, relheight=0.60, relwidth=0.994)
+
+    def paging_frame_def(self):
+        global top
+        font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
+                 "roman -underline 0 -overstrike 0"
+        self.paging_frame.place(relx=0.28, rely=0.560, relheight=0.120, relwidth=0.700)
+        self.paging_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
+        next_button = tk.Button(self.paging_frame, text="Sonraki Sayfa")
+        next_button.configure(activebackground="#ececec", activeforeground="#000000", background="red")
+        next_button.configure(disabledforeground="#a3a3a3", font=font11, foreground="white")
+        next_button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=14, height=2,
+                         wraplength=130)
+        next_button.configure(command=lambda btn=next_button: self.next_product_button_clicked())
+        next_button.grid(row=0, column=2)
+        previous_button = tk.Button(self.paging_frame, text="Önceki Sayfa")
+        previous_button.configure(activebackground="#ececec", activeforeground="#000000", background="red")
+        previous_button.configure(disabledforeground="#a3a3a3", font=font11, foreground="white")
+        previous_button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=14, height=2,
+                         wraplength=130)
+        previous_button.configure(command=lambda btn=previous_button: self.previous_product_button_clicked())
+        previous_button.grid(row=0, column=0)
+
     def employee_frame_def(self):
         global top
         font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         for child in self.product_frame.winfo_children():
             child.destroy()
-        self.product_frame.place(relx=0.23, rely=0.110, relheight=0.573, relwidth=0.760)
-        self.product_frame.configure(relief='groove')
-        self.product_frame.configure(borderwidth="2")
-        self.product_frame.configure(relief="groove")
-        self.product_frame.configure(background="#d9d9d9")
-        self.product_frame.configure(width=635)
-        row_size, col_size = 8, 4
+        self.product_frame.place(relx=0.28, rely=0.110, relheight=0.440, relwidth=0.700)
+        self.product_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
+        row_size, col_size = 4, 3
         for btn_no, employee in enumerate(glb_employees):
             button = tk.Button(self.product_frame, text=employee.Persname)
             button.configure(command=lambda btn=button: self.employee_button_clicked(btn))
-            button.configure(activebackground="#ececec")
-            button.configure(activeforeground="#000000")
-            button.configure(background="#d9d9d9")
-            button.configure(disabledforeground="#a3a3a3")
-            button.configure(font=font11)
-            button.configure(foreground="#000000")
-            button.configure(highlightbackground="#d9d9d9")
-            button.configure(highlightcolor="black")
-            button.configure(pady="0")
-            button.configure(width=13)
-            button.configure(height=2)
+            button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9", disabledforeground="#a3a3a3")
+            button.configure(font=font11, foreground="#000000", highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=13, height=2)
             button.configure(wraplength=130)
             button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
 
@@ -238,6 +255,7 @@ class MainWindow(tk.Tk):
         global top
 
         self.display_frame.place(relx=0.0, rely=0.0, relheight=0.100, relwidth=0.994)
+        self.product_frame.configure(width=795)
         self.customer_no = tk.Text(self.display_frame, height=1, width=4, font=("Arial Bold", 25),
                                    bg='dark blue', fg="white")
         self.scale_display = tk.Text(self.display_frame, height=1, width=12, font=("Arial Bold", 25),
@@ -257,15 +275,23 @@ class MainWindow(tk.Tk):
         self.scale_display.grid(row=0, column=2)
         self.scale_type.grid(row=0, column=3)
 
-    def product_frame_def(self):
-        global top
-        font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
+    def add_product_buttons(self):
+        global glb_product_page
+        font11 = "-family {Segoe UI} -size 11 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
-
-        self.product_frame.place(relx=0.28, rely=0.110, relheight=0.573, relwidth=0.700)
-        self.product_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
-        row_size, col_size = 8, 3
-        for btn_no, prod in enumerate(glb_product_names):
+        for child in self.product_frame.winfo_children():
+            child.destroy()
+        row_size, col_size = 4, 3
+        lower_product_cnt = glb_product_page*row_size*col_size
+        while lower_product_cnt > len(glb_product_names):
+            glb_product_page = glb_product_page-1
+            lower_product_cnt = glb_product_page*row_size*col_size
+        upper_product_cnt = lower_product_cnt+12
+        if upper_product_cnt > len(glb_product_names):
+            upper_product_cnt = len(glb_product_names)
+        btn_no = 0
+        while lower_product_cnt < upper_product_cnt:
+            prod = glb_product_names[lower_product_cnt]
             button = tk.Button(self.product_frame, text=prod.productName)
             button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
             button.configure(disabledforeground="#a3a3a3", font=font11, foreground="#000000")
@@ -273,6 +299,16 @@ class MainWindow(tk.Tk):
                              wraplength=130)
             button.configure(command=lambda btn=button: self.product_button_clicked(btn))
             button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
+            btn_no=btn_no+1
+            lower_product_cnt = lower_product_cnt+1
+
+
+    def product_frame_def(self):
+        global top
+
+        self.product_frame.place(relx=0.28, rely=0.110, relheight=0.440, relwidth=0.700)
+        self.product_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
+        self.add_product_buttons()
 
     def productssold_frame_def(self):
         global top
@@ -280,7 +316,7 @@ class MainWindow(tk.Tk):
                  "roman -underline 0 -overstrike 0"
         font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
                 " -underline 0 -overstrike 0"
-        self.products_sold_frame.place(relx=0.0, rely=0.110, relheight=0.573, relwidth=0.280)
+        self.products_sold_frame.place(relx=0.0, rely=0.110, relheight=0.550, relwidth=0.280)
         self.products_sold_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9",
                                            highlightbackground="#d9d9d9")
         self.products_sold_frame.configure(highlightcolor="black", width=155)
@@ -373,6 +409,17 @@ class MainWindow(tk.Tk):
         self.btn_clearlasttransaction.configure(disabledforeground="#a3a3a3", font=font11, foreground="#000000")
         self.btn_clearlasttransaction.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0",
                                                 text='''Son İşlemi Sil''', width=15)
+
+    def next_product_button_clicked(self):
+        global glb_product_page
+        glb_product_page = glb_product_page + 1
+        self.add_product_buttons()
+
+    def previous_product_button_clicked(self):
+        global glb_product_page
+        if glb_product_page > 0:
+            glb_product_page = glb_product_page - 1
+        self.add_product_buttons()
 
     def btn_sendcashier_clicked(self):
         global glb_customer_no
@@ -489,20 +536,17 @@ class MainWindow(tk.Tk):
             glb_employeeselected = btn.cget("text")
             for child in self.product_frame.winfo_children():
                 child.destroy()
-            self.display_frame.grid(columnspan=2, row=0)
-            self.products_sold_frame.grid(row=1, column=1)
-            self.product_frame.grid(row=1, column=2)
-            self.functions_frame.grid(columnspan=2, row=2)
-            self.message_box_frame.grid(columnspan=2, row=3)
-            self.message_box_frame.place(relx=0.0, rely=0.900, relheight=0.10, relwidth=0.994)
-            self.message_box_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9")
-            self.message_box_frame.configure(highlightbackground="#f0f0f0", width=795)
-            self.message_box_text = tk.Text(self.message_box_frame, height=1, width=80, font=("Arial Bold", 12),
-                                            bg='dark red', fg="white")
-            self.message_box_text.place(relx=0.0, rely=0.0, relheight=0.60, relwidth=0.994)
+            self.display_frame.grid(row=0, column=0, columnspan=2)
+            self.products_sold_frame.grid(row=1, column=0, rowspan=2)
+            self.product_frame.grid(row=1, column=1)
+            self.paging_frame.grid(row=2, column=1)
+            self.functions_frame.grid(row=3, column=0, columnspan=2)
+            self.message_box_frame.grid(row=4, column=0, columnspan=2)
             self.functions_frame_def()
             self.employee_frame_def()
+            self.paging_frame_def()
             self.productssold_frame_def()
+            self.message_box_frame_def()
             tt = self.select_reyon.get()
             teraziID = [x.teraziID for x in glb_reyons if x.ReyonName == tt][0]
             load_products(self, teraziID)
@@ -556,7 +600,7 @@ class MainWindow(tk.Tk):
         top.geometry("800x480+1571+152")
         top.title("Terazi Ara Yüzü")
         top.configure(background="#d9d9d9")
-        windows_env = 0
+        windows_env = 1
         serial_data = ''
         filter_data = ''
         update_period = 60
@@ -564,27 +608,25 @@ class MainWindow(tk.Tk):
         loadTables()
         """Create frames"""
         self.display_frame = tk.Frame(top)
-        self.functions_frame = tk.Frame(top)
-        self.product_frame = tk.Frame(top)
         self.products_sold_frame = tk.Frame(top)
+        self.product_frame = tk.Frame(top)
+        self.paging_frame = tk.Frame(top)
+        self.functions_frame = tk.Frame(top)
         self.message_box_frame = tk.Frame(top)
         """define screen orientation"""
-        self.display_frame.grid(columnspan=2, row=0)
-        self.products_sold_frame.grid(row=1, column=1)
-        self.product_frame.grid(row=1, column=2)
-        self.functions_frame.grid(columnspan=2, row=2)
-        self.message_box_frame.grid(columnspan=2, row=3)
-        self.message_box_frame.place(relx=0.0, rely=0.900, relheight=0.10, relwidth=0.994)
-        self.message_box_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9")
-        self.message_box_frame.configure(highlightbackground="#f0f0f0", width=795)
-        self.message_box_text = tk.Text(self.message_box_frame, height=1, width=80, font=("Arial Bold", 12),
-                                        bg='dark red', fg="white")
-        self.message_box_text.place(relx=0.0, rely=0.0, relheight=0.60, relwidth=0.994)
+        self.display_frame.grid(row=0, column=0, columnspan=2)
+        self.products_sold_frame.grid(row=1, column=0, rowspan=2)
+        self.product_frame.grid(row=1, column=1)
+        self.paging_frame.grid(row=2, column=1)
+        self.functions_frame.grid(row=3, column=0, columnspan=2)
+        self.message_box_frame.grid(row=4, column=0, columnspan=2)
         """define frame contents, except product frame glb_employees will be displayed in product frame"""
         self.display_frame_def()
         self.functions_frame_def()
         self.employee_frame_def()
+        self.paging_frame_def()
         self.productssold_frame_def()
+        self.message_box_frame_def()
         new_data = threading.Event()
         t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
         t2.daemon = True
