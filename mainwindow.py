@@ -5,6 +5,7 @@ import pyodbc
 import threading
 import serial
 import datetime
+import time
 
 glb_customer_no = 0
 top = None
@@ -143,7 +144,14 @@ def sales_load(typeOfCollection):
 
 
 def load_products(self, ID):
-    conn = pyodbc.connect(glb_connection_str)
+    db_connected = FALSE
+    while not db_connected:
+        try:
+            conn = pyodbc.connect(glb_connection_str)
+            db_connected = TRUE
+        except:
+            db_connected = FALSE
+            time.sleep(2)
     cursor = conn.cursor()
     cursor.execute(
         "Select  TeraziID, [dbo].[ProductModels].productID, productName, productRetailPrice from [dbo].[ProductModels]"
