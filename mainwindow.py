@@ -601,10 +601,13 @@ class MainWindow(tk.Tk):
             self.message_box_text.insert(END, "Yeni Müşteri Seçilmeden Ürün Seçimi Yapılamaz")
 
     def __init__(self, top=None):
-        top.geometry("800x480+1571+152")
+
+        w, h = top.winfo_screenwidth(), root.winfo_screenheight()
+        top.geometry("%dx%d+0+0" % (w, h))
+        """top.geometry("800x480+1571+152")"""
         top.title("Terazi Ara Yüzü")
         top.configure(background="#d9d9d9")
-        windows_env = 1
+        windows_env = 0
         serial_data = ''
         filter_data = ''
         update_period = 60
