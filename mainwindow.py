@@ -236,7 +236,7 @@ class MainWindow(tk.Tk):
         next_button.configure(activebackground="#ececec", activeforeground="#000000", background="dark red")
         next_button.configure(disabledforeground="#a3a3a3", font=font11, foreground="white")
         next_button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=14, height=2,
-                         wraplength=130)attl request
+                         wraplength=130)
         next_button.configure(command=lambda btn=next_button: self.next_product_button_clicked())
         next_button.grid(row=0, column=2)
         previous_button = tk.Button(self.paging_frame, text="Önceki Sayfa")
@@ -447,7 +447,7 @@ class MainWindow(tk.Tk):
         glb_sales_line_id = 1
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, "0")
-        resp = requests.get("hakan/api/DataRefresh")
+        resp = requests.get("http://hakan/api/DataRefresh")
 
     def btn_change_user_clicked(self):
         global top
