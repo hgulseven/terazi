@@ -489,6 +489,7 @@ class MainWindow(tk.Tk):
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, "0")
         glb_sales_line_id = 1
+        glb_customer_no = 0
 
     def btn_savesale_clicked(self):
         global glb_sales_line_id
