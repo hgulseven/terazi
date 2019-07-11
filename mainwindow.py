@@ -87,9 +87,9 @@ def sales_update(typeOfCollection):
     for salesObj in glb_sales:
         cursor.execute(
             "update dbo.SalesModels set saleDate=?, salesID=?,  salesLineID=?, personelID=?, productID=?, amount=?, typeOfCollection=? "
-            "where personelID=? and salesID=? and salesLineID=? and typeOfCollection=?"
+            "where personelID=? and salesID=? and salesLineID=? and typeOfCollection=? and saleDate=?"
             , salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.productID,
-            salesObj.amount, typeOfCollection, salesObj.personelID, salesObj.salesID,salesObj.salesLineID, "-1")
+            salesObj.amount, typeOfCollection, salesObj.personelID, salesObj.salesID,salesObj.salesLineID, "-1", salesObj.saleDate)
     conn.commit()
     cursor.close()
 
@@ -97,14 +97,14 @@ def sales_save(typeOfCollection):
     conn = pyodbc.connect(glb_connection_str)
     cursor = conn.cursor()
     for salesObj in glb_sales:
-        cursor.execute("select count(*) from dbo.SalesModels where personelID=? and typeOfCollection=? and salesLineID=?", salesObj.personelID, -1, salesObj.salesLineID)
+        cursor.execute("select count(*) from dbo.SalesModels where personelID=? and typeOfCollection=? and salesLineID=? and saleDate=?", salesObj.personelID, -1, salesObj.salesLineID, salesObj.saleDate)
         number_of_rows = cursor.fetchone()[0]
         if number_of_rows > 0:
             cursor.execute(
                 "update dbo.SalesModels set saleDate=?, salesID=?,  salesLineID=?, personelID=?, productID=?, amount=?,"
-                "typeOfCollection=? where personelID=? and typeOfCollection=? and salesID=? and salesLineID=?"
+                "typeOfCollection=? where personelID=? and typeOfCollection=? and salesID=? and salesLineID=? and saleDate=?"
                 , salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.productID,
-                salesObj.amount, typeOfCollection, salesObj.personelID, -1, salesObj.salesID, salesObj.salesLineID)
+                salesObj.amount, typeOfCollection, salesObj.personelID, -1, salesObj.salesID, salesObj.salesLineID, salesObj.saleDate)
         else:
             cursor.execute(
                 "insert into dbo.SalesModels (saleDate, salesID,  salesLineID, personelID, productID, amount, typeOfCollection) values (?,?,?,?,?,?,?)"
@@ -438,16 +438,18 @@ class MainWindow(tk.Tk):
         global glb_customer_no
         global glb_sales_line_id
 
+        resp = requests.get("http://hakan/api/DataRefresh")
         sales_save(-1)
+        self.message_box_text.insert(END, "Dummy Save")
         sales_update(0)
-        self.message_box_text.delete("1.0", END)
+        self.message_box_text.insert(END, "DB yazımı")
         glb_sales.clear()
         self.update_products_sold()
         glb_customer_no = 0
         glb_sales_line_id = 1
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, "0")
-        resp = requests.get("http://hakan/api/DataRefresh")
+
 
     def btn_change_user_clicked(self):
         global top
@@ -487,7 +489,7 @@ class MainWindow(tk.Tk):
         glb_sales.clear()
         self.update_products_sold()
         self.customer_no.delete('1.0', END)
-        self.customer_no.insert(END, "0")
+        self.customer_no.insert(END, "0")-
         glb_sales_line_id = 1
         glb_customer_no = 0
 
