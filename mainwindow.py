@@ -489,7 +489,7 @@ class MainWindow(tk.Tk):
         glb_sales.clear()
         self.update_products_sold()
         self.customer_no.delete('1.0', END)
-        self.customer_no.insert(END, "0")-
+        self.customer_no.insert(END, "0")
         glb_sales_line_id = 1
         glb_customer_no = 0
 
