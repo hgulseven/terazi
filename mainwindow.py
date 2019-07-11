@@ -438,7 +438,6 @@ class MainWindow(tk.Tk):
         global glb_customer_no
         global glb_sales_line_id
 
-        resp = requests.get("http://hakan/api/DataRefresh")
         sales_save(-1)
         self.message_box_text.insert(END, "Dummy Save")
         sales_update(0)
@@ -449,6 +448,7 @@ class MainWindow(tk.Tk):
         glb_sales_line_id = 1
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, "0")
+        resp = requests.get("http://hakan/api/DataRefresh")
 
 
     def btn_change_user_clicked(self):
