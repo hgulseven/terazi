@@ -158,7 +158,7 @@ def load_products(self, ID):
         "Select  TeraziID, [dbo].[ProductModels].productID, productName, productRetailPrice from [dbo].[ProductModels]"
         " left outer join [dbo].[TeraziScreenMapping] on "
         "([dbo].[TeraziScreenMapping].productID=[dbo].[ProductModels].productID)"
-        "where TeraziID=?", ID)
+        "where TeraziID=? order by screenSeqNo", ID)
     glb_product_names.clear()
     for row in cursor:
         productObj = Product()
