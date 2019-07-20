@@ -14,7 +14,7 @@ glb_product_names = []
 glb_reyons = []
 glb_employees = []
 glb_sales = []
-glb_connection_str = 'DSN=GULSEVEN;UID=hakan;PWD=ZXCvbn123'
+glb_connection_str = 'DSN=GULSEVEN;UID=sa;PWD=QAZwsx135'
 """glb_connection_str = 'DRIVER={FreeTDS};SERVER=192.168.1.106;PORT=51012;DATABASE=GULSEVEN;UID=hakan;PWD=ZXCvbn123;TDS_Version=7.2'"""
 glb_scaleId = 0
 glb_employeeselected = ''
@@ -448,7 +448,7 @@ class MainWindow(tk.Tk):
         glb_sales_line_id = 1
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, "0")
-        resp = requests.get("http://hakan/api/DataRefresh")
+        resp = requests.get("http://gulsevensrv/api/DataRefresh")
 
 
     def btn_change_user_clicked(self):
