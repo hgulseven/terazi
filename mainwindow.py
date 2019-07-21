@@ -214,7 +214,6 @@ def vp_start_gui():
     maininit(root, top)
     root.mainloop()
 
-
 class MainWindow(tk.Tk):
 
     def message_box_frame_def(self):
@@ -275,6 +274,7 @@ class MainWindow(tk.Tk):
                                      bg='dark green', fg="white")
         self.scale_type = tk.Text(self.display_frame, height=1, width=3, font=("Arial Bold", 25),
                                   bg='dark green', fg="white")
+        self.prdct_barcode = tk.Text(self.display_frame, height=1, width=1, font=('Arial Bold',25))
         self.scale_type.insert(END, "Kg")
         self.customer_no.insert(END, "0")
         reyon_names = []
@@ -283,10 +283,18 @@ class MainWindow(tk.Tk):
         self.select_reyon = Combobox(self.display_frame, font=("Arial Bold", 22), values=reyon_names)
         self.select_reyon.bind("<<ComboboxSelected>>", self.checkreyon)
         self.select_reyon
-        self.select_reyon.grid(row=0, column=0)
-        self.customer_no.grid(row=0, column=1)
-        self.scale_display.grid(row=0, column=2)
-        self.scale_type.grid(row=0, column=3)
+        self.prdct_barcode.grid(row=0,column=0)
+        self.select_reyon.grid(row=0, column=1)
+        self.customer_no.grid(row=0, column=2)
+        self.scale_display.grid(row=0, column=3)
+        self.scale_type.grid(row=0, column=4)
+        self.prdct_barcode.focus_set()
+        self.prdct_barcode.bind('<Key-Return>', self.read_barcode)
+
+    def read_barcode(self,event):
+        textdata = self.prdct_barcode.get('1.0', END)
+        self.prdct_barcode.delete('1.0', END)
+        print(textdata)
 
     def add_product_buttons(self):
         global glb_product_page
@@ -439,9 +447,7 @@ class MainWindow(tk.Tk):
         global glb_sales_line_id
 
         sales_save(-1)
-        self.message_box_text.insert(END, "Dummy Save")
         sales_update(0)
-        self.message_box_text.insert(END, "DB yazımı")
         glb_sales.clear()
         self.update_products_sold()
         glb_customer_no = 0
@@ -545,8 +551,6 @@ class MainWindow(tk.Tk):
     def employee_button_clicked(self, btn):
         global glb_scaleId
         global glb_employeeselected
-
-
         self.message_box_text.delete("1.0", END)
         glb_scaleId = self.select_reyon.current()
         if glb_scaleId != -1:
@@ -576,6 +580,7 @@ class MainWindow(tk.Tk):
             self.update_products_sold()
             self.customer_no.delete('1.0', END)
             self.customer_no.insert(END, glb_customer_no)
+            self.prdct_barcode.focus_set()
         else:
             self.message_box_text.insert(END, "Reyon Seçimini Yapmadan Personel Seçimi Yapılamaz")
 
@@ -614,7 +619,6 @@ class MainWindow(tk.Tk):
             self.message_box_text.insert(END, "Yeni Müşteri Seçilmeden Ürün Seçimi Yapılamaz")
 
     def __init__(self, top=None):
-
         w, h = top.winfo_screenwidth(), root.winfo_screenheight()
         top.geometry("%dx%d+0+0" % (w, h))
         """top.geometry("800x480+1571+152")"""
