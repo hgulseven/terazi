@@ -8,14 +8,15 @@ import datetime
 import time
 import requests
 
-glb_cursor = 0
-glb_customer_no = 0
+glb_cursor = 0  # global cursor for db access. Initialized in load_products
+glb_customer_no = 0  # customer no is got by using salesCounter table.
 top = None
-glb_product_names = []
-glb_reyons = []
-glb_employees = []
-glb_sales = []
-glb_customers = []
+glb_product_names = []  # products are loaded to memory based on rayon
+glb_reyons = []  # rayon combobox contents
+glb_employees = []  # employees loaded to this global collection
+glb_sales = []  # sales for the active customer loaded to this collection
+glb_active_served_customers = []  # active customers loaded to this collection
+glb_customers_on_cashier = []  # customers that were sent to cashier. Actively waiting for payment
 # product frame is used for various selections such as Products, Customers
 # employees, customer callback if the value is
 # 0: employees
@@ -23,14 +24,14 @@ glb_customers = []
 # 2: Customers
 # 3:Call back customers
 # this variable is used for next, previous buttons and set when page display content is changed
-glb_active_product_frame_content = 0
+glb_active_product_frame_content = 0  # shows contents of product frame which is used more than one purpose
 glb_connection_str = 'DSN=GULSEVEN;UID=sa;PWD=QAZwsx135'
 # glb_connection_str = 'DRIVER={FreeTDS};SERVER=192.168.1.106;PORT=51012;DATABASE=GULSEVEN;UID=hakan;PWD=ZXCvbn123;TDS_Version=7.2'
 glb_scaleId = 0
-glb_employeeselected = ''
-glb_sales_line_id = 1
-glb_base_weight = 0
-glb_product_page = 0
+glb_employeeselected = ''  # name of the selected employee.
+glb_sales_line_id = 1    # line of the sales
+glb_base_weight = 0      # tare weight is stored in this variable. Updated when tare button is clicked.
+glb_product_page = 0    # paging of product buttons displayed in product frame
 
 
 class Product(object):
@@ -105,16 +106,17 @@ class Sales(object):
         # 2 paid by credit card;
         # 3 other type of payment;
 
-def sales_update(typeOfCollection):
+
+def sales_update(salesID, srcTypeOfCollection, destTypeOfCollection):
     global glb_cursor
     # conn = pyodbc.connect(glb_connection_str)
     # cursor = conn.cursor()
     for salesObj in glb_sales:
         glb_cursor.execute(
             "update dbo.SalesModels set saleDate=?, salesID=?,  salesLineID=?, personelID=?, productID=?, amount=?, typeOfCollection=? "
-            "where personelID=? and salesID=? and salesLineID=? and typeOfCollection=? and saleDate=?"
+            "where salesID=? and salesLineID=? and typeOfCollection=? and saleDate=?"
             , salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.productID,
-            salesObj.amount, typeOfCollection, salesObj.personelID, salesObj.salesID, salesObj.salesLineID, "-1",
+            salesObj.amount, destTypeOfCollection, salesID, salesObj.salesLineID, srcTypeOfCollection,
             salesObj.saleDate)
     glb_cursor.commit()
     # cursor.close()
@@ -134,7 +136,7 @@ def sales_save(typeOfCollection):
                 "update dbo.SalesModels set saleDate=?, salesID=?,  salesLineID=?, personelID=?, productID=?, amount=?,"
                 "typeOfCollection=? where personelID=? and typeOfCollection=? and salesID=? and salesLineID=? and saleDate=?"
                 , salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.productID,
-                salesObj.amount, typeOfCollection, salesObj.personelID, -1, salesObj.salesID, salesObj.salesLineID,
+                salesObj.amount, typeOfCollection, salesObj.personelID, typeOfCollection, salesObj.salesID, salesObj.salesLineID,
                 salesObj.saleDate)
         else:
             glb_cursor.execute(
@@ -145,7 +147,7 @@ def sales_save(typeOfCollection):
     # cursor.close()
 
 
-def sales_load(typeOfCollection):
+def sales_load(salesID, typeOfCollection):
     global glb_customer_no
     global glb_sales_line_id
     global glb_customer_no
@@ -158,7 +160,7 @@ def sales_load(typeOfCollection):
         "left outer join ProductModels "
         "on (SalesModels.productID= ProductModels.productID) "
         "where salesId=? and typeOfCollection=?",
-        glb_customer_no, typeOfCollection)
+        salesID, typeOfCollection)
     glb_sales_line_id = 1
     for row in glb_cursor:
         glb_customer_no = row[1]
@@ -196,8 +198,9 @@ def get_product_based_on_barcod(prdct_barcode, salesObj):
         salesObj.retailPrice = row[2]
         salesObj.typeOfCollection = 0
 
-def get_active_customers():
-    global glb_customers
+
+def get_served_customers():
+    global glb_active_served_customers
     global glb_cursor
     # db_connected = FALSE
     # while not db_connected:
@@ -214,7 +217,30 @@ def get_active_customers():
     for row in glb_cursor:
         customer_obj = Customer()
         customer_obj.customerNo = row[0]
-        glb_customers.append(customer_obj)
+        glb_active_served_customers.append(customer_obj)
+    # cursor.close()
+
+
+def get_customers_on_cashier():
+    global glb_customers_on_cashier
+    global glb_cursor
+    # db_connected = FALSE
+    # while not db_connected:
+    #    try:
+    #        conn = pyodbc.connect(glb_connection_str)
+    #        db_connected = TRUE
+    #    except:
+    #        db_connected = FALSE
+    #        time.sleep(2)
+    # cursor = conn.cursor()
+    glb_customers_on_cashier.clear()
+    glb_cursor.execute(
+        "Select  distinct salesID from [dbo].[SalesModels]"
+        "where  typeOfCollection = 0 order by salesID")
+    for row in glb_cursor:
+        customer_obj = Customer()
+        customer_obj.customerNo = row[0]
+        glb_customers_on_cashier.append(customer_obj)
     # cursor.close()
 
 
@@ -345,21 +371,21 @@ class MainWindow(tk.Tk):
             button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
 
     def customer_frame_def(self):
-        global glb_customers
+        global glb_active_served_customers
         global top
         global glb_active_product_frame_content
         font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         glb_active_product_frame_content = 2
-        glb_customers.clear()
+        glb_active_served_customers.clear()
         for child in self.product_frame.winfo_children():
             child.destroy()
         self.product_frame.place(relx=0.28, rely=0.110, relheight=0.440, relwidth=0.700)
         self.product_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
         row_size, col_size = 4, 3
-        get_active_customers()
+        get_served_customers()
         btn_no = 0
-        for btn_no, customer_obj in enumerate(glb_customers):
+        for btn_no, customer_obj in enumerate(glb_active_served_customers):
             button = tk.Button(self.product_frame, text=customer_obj.customerNo)
             button.configure(command=lambda btn=button: self.customer_button_clicked(btn))
             button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9",
@@ -377,6 +403,32 @@ class MainWindow(tk.Tk):
                          pady="0", width=13, height=2)
         button.configure(wraplength=130)
         button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
+
+    def call_back_customer_frame_def(self):
+        global glb_customers_on_cashier
+        global top
+        global glb_active_product_frame_content
+        font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
+                 "roman -underline 0 -overstrike 0"
+        glb_active_product_frame_content = 3
+        glb_customers_on_cashier.clear()
+        for child in self.product_frame.winfo_children():
+            child.destroy()
+        self.product_frame.place(relx=0.28, rely=0.110, relheight=0.440, relwidth=0.700)
+        self.product_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
+        row_size, col_size = 4, 3
+        get_customers_on_cashier()
+        btn_no = 0
+        for btn_no, customer_obj in enumerate(glb_customers_on_cashier):
+            button = tk.Button(self.product_frame, text=customer_obj.customerNo)
+            button.configure(command=lambda btn=button: self.call_back_customer_no_clicked(btn))
+            button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9",
+                             disabledforeground="#a3a3a3")
+            button.configure(font=font11, foreground="#000000", highlightbackground="#d9d9d9", highlightcolor="black",
+                             pady="0", width=13, height=2)
+            button.configure(wraplength=130)
+            button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
+
 
     def display_frame_def(self):
         global top
@@ -589,7 +641,7 @@ class MainWindow(tk.Tk):
         glb_customer_no = btn.cget("text")
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
-        sales_load(-1)
+        sales_load(glb_customer_no, -1)
         self.product_frame_def()
         self.update_products_sold()
 
@@ -598,7 +650,7 @@ class MainWindow(tk.Tk):
         global glb_sales_line_id
 
         sales_save(-1)
-        sales_update(0)
+        sales_update(glb_customer_no, -1, 0)  #  update which has value -1 (actively served customer) to 0 (sent to cashier)
         glb_sales.clear()
         self.update_products_sold()
         glb_customer_no = 0
@@ -621,8 +673,18 @@ class MainWindow(tk.Tk):
         self.employee_frame_def()
         glb_employeeselected = ""
 
+    def call_back_customer_no_clicked(self, btn):
+        salesID=btn.cget("text")
+        glb_sales.clear()
+        sales_load(salesID, 0)
+        sales_update(salesID, 0, -1)
+        self.customer_no.delete('1.0', END)
+        self.customer_no.insert(END, glb_customer_no)
+        self.update_products_sold()
+        self.product_frame_def()
+
     def call_back_customer_clicked(self):
-        ss = 1
+        self.call_back_customer_frame_def()
 
     def new_customer_clicked(self):
         global top
@@ -734,7 +796,7 @@ class MainWindow(tk.Tk):
             '''self.product_frame_def()'''
             self.functions_frame_def()
             self.select_reyon.current(glb_scaleId)
-            sales_load(-1)
+            sales_load(glb_customer_no, -1)
             self.update_products_sold()
             self.customer_no.delete('1.0', END)
             self.customer_no.insert(END, glb_customer_no)
