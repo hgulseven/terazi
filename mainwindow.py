@@ -584,6 +584,7 @@ class MainWindow(tk.Tk):
         else:
             self.message_box_text.insert(END, "Reyon Seçimini Yapmadan Personel Seçimi Yapılamaz")
 
+
     def update_products_sold(self):
         self.entry_products.delete("1.0", END)
         self.entry_calculatedtotal.delete("1.0", END)
