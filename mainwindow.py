@@ -136,7 +136,7 @@ def sales_save(typeOfCollection):
                 "update dbo.SalesModels set saleDate=?, salesID=?,  salesLineID=?, personelID=?, productID=?, amount=?,"
                 "typeOfCollection=? where personelID=? and typeOfCollection=? and salesID=? and salesLineID=? and saleDate=?"
                 , salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.productID,
-                salesObj.amount, typeOfCollection, salesObj.personelID, typeOfCollection, salesObj.salesID, salesObj.salesLineID,
+                salesObj.amount, typeOfCollection, salesObj.personelID, salesObj.typeOfCollection, salesObj.salesID, salesObj.salesLineID,
                 salesObj.saleDate)
         else:
             glb_cursor.execute(
@@ -682,6 +682,8 @@ class MainWindow(tk.Tk):
         self.customer_no.insert(END, glb_customer_no)
         self.update_products_sold()
         self.product_frame_def()
+        resp = requests.get("http://gulsevensrv/api/DataRefresh")
+
 
     def call_back_customer_clicked(self):
         self.call_back_customer_frame_def()
@@ -764,6 +766,7 @@ class MainWindow(tk.Tk):
             self.product_frame_def()
             self.functions_frame_def()
             self.select_reyon.current(glb_scaleId)
+            self.prdct_barcode.focus_set()
         else:
             self.message_box_text.insert(END, "Çalışan seçilmeden işleme devam edilemez")
 
@@ -844,7 +847,7 @@ class MainWindow(tk.Tk):
         # top.geometry("800x480+1571+152")
         top.title("Terazi Ara Yüzü")
         top.configure(background="#d9d9d9")
-        windows_env = 1
+        windows_env = 0
         serial_data = ''
         filter_data = ''
         update_period = 60
