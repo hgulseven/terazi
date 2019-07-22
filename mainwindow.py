@@ -29,6 +29,9 @@ class Product(object):
         self.price = price
         self.teraziID = teraziID
 
+class Customer(object):
+    def __init__(self, customer_no=None):
+        self.customerNo = customer_no
 
 class Reyon(object):
     def __init__(self, teraziID=None, ReyonName=None):
@@ -143,6 +146,24 @@ def sales_load(typeOfCollection):
         glb_sales_line_id = glb_sales_line_id + 1
     cursor.close
 
+def get_active_customers():
+    db_connected = FALSE
+    while not db_connected:
+        try:
+            conn = pyodbc.connect(glb_connection_str)
+            db_connected = TRUE
+        except:
+            db_connected = FALSE
+            time.sleep(2)
+    cursor = conn.cursor()
+    cursor.execute(
+        "Select  salesID from [dbo].[SalesModels]"
+        "where  typeOfCollection = -1 order by salesID")
+    for row in cursor:
+        customer_obj = Customer()
+        customer_obj.customerNo = row[0]
+        glb_customers.append(customer_obj)
+    cursor.close()
 
 def load_products(self, ID):
     db_connected = FALSE
@@ -262,6 +283,31 @@ class MainWindow(tk.Tk):
             button.configure(font=font11, foreground="#000000", highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=13, height=2)
             button.configure(wraplength=130)
             button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
+
+  def customer_frame_def(self):
+        global top
+        font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
+                 "roman -underline 0 -overstrike 0"
+        for child in self.product_frame.winfo_children():
+            child.destroy()
+        self.product_frame.place(relx=0.28, rely=0.110, relheight=0.440, relwidth=0.700)
+        self.product_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
+        row_size, col_size = 4, 3
+        get_active_customers()
+        for btn_no, customer_obj in enumerate(glb_customers):
+            button = tk.Button(self.product_frame, text=customer_obj.customerNo)
+            button.configure(command=lambda btn=button: self.customer_btn_clicked(btn))
+            button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9", disabledforeground="#a3a3a3")
+            button.configure(font=font11, foreground="#000000", highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=13, height=2)
+            button.configure(wraplength=130)
+            button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
+        button = tk.Button(self.product_frame, text="Yeni Müşteri")
+        button.configure(command=lambda btn=button: self.new_customer_clicked(btn))
+        button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9", disabledforeground="#a3a3a3")
+        button.configure(font=font11, foreground="#000000", highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=13, height=2)
+        button.configure(wraplength=130)
+        button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
+
 
     def display_frame_def(self):
         global top
@@ -573,7 +619,8 @@ class MainWindow(tk.Tk):
             load_products(self, teraziID)
             for child in self.product_frame.winfo_children():
                 child.destroy()
-            self.product_frame_def()
+            self.customer_frame_def()
+            '''self.product_frame_def()'''
             self.functions_frame_def()
             self.select_reyon.current(glb_scaleId)
             sales_load(-1)
