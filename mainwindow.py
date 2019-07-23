@@ -26,15 +26,15 @@ glb_customers_on_cashier = []  # customers that were sent to cashier. Actively w
 # this variable is used for next, previous buttons and set when page display content is changed
 glb_active_product_frame_content = 0  # shows contents of product frame which is used more than one purpose
 glb_connection_str = 'DSN=GULSEVEN;UID=sa;PWD=QAZwsx135'
-# glb_connection_str = 'DRIVER={FreeTDS};SERVER=192.168.1.106;PORT=51012;DATABASE=GULSEVEN;UID=hakan;PWD=ZXCvbn123;TDS_Version=7.2'
 glb_scaleId = 0
-glb_employeeselected = ''  # name of the selected employee.
+glb_employees_selected = ''  # name of the selected employee.
 glb_sales_line_id = 1    # line of the sales
 glb_base_weight = 0      # tare weight is stored in this variable. Updated when tare button is clicked.
 glb_product_page_count = 0    # paging of product buttons displayed in product frame
 glb_employees_page_count = 0  # paging of employee buttons displayed in product frame
 glb_active_customers_page_count = 0  # paging of active customers buttons displayed in product frame
 glb_callback_customers_page_count = 0  # paging of callback customers buttons displayed in product frame
+
 
 class Product(object):
     def __init__(self, productID=None, Name=None, price=None, teraziID=None):
@@ -66,22 +66,22 @@ class SalesCounter(object):
         self.salesDate = salesDate
         self.counter = 0
 
-    def getcounter(self):
+    def get_counter(self):
         global glb_cursor
         # conn = pyodbc.connect(glb_connection_str)
         # cursor = conn.cursor()
-        mydate = datetime.date.today()
-        glb_cursor.execute("select counter from salesCounter where salesDate=?", mydate.strftime('%Y-%m-%d'))
+        my_date = datetime.date.today()
+        glb_cursor.execute("select counter from salesCounter where salesDate=?", my_date.strftime('%Y-%m-%d'))
         number_of_rows = 0
         for row in glb_cursor:
             number_of_rows = number_of_rows + 1
             self.counter = row[0] + 1
         if number_of_rows > 0:
             glb_cursor.execute("Update salesCounter set counter=? where salesDate=?", self.counter,
-                           mydate.strftime('%Y-%m-%d'))
+                           my_date.strftime('%Y-%m-%d'))
         else:
             self.counter = 1
-            glb_cursor.execute("Insert into salesCounter (salesDate, counter) values (?,?)", mydate.strftime('%Y-%m-%d'),
+            glb_cursor.execute("Insert into salesCounter (salesDate, counter) values (?,?)", my_date.strftime('%Y-%m-%d'),
                            self.counter)
         glb_cursor.commit()
         # cursor.close()
@@ -91,8 +91,8 @@ class SalesCounter(object):
 class Sales(object):
     def __init__(self, salesID=None, salesLineID=None, personelID=None, productID=None, Name=None,
                  retailPrice=None, amount=None, typeOfCollection=None):
-        mydate = datetime.date.today()
-        self.saleDate = mydate.strftime('%Y-%m-%d')
+        my_date = datetime.date.today()
+        self.saleDate = my_date.strftime('%Y-%m-%d')
         self.salesID = salesID
         self.salesLineID = salesLineID
         self.personelID = personelID
@@ -185,7 +185,7 @@ def get_product_based_on_barcod(prdct_barcode, salesObj):
     global glb_cursor
     global glb_sales_line_id
     global glb_customer_no
-    global glb_employeeselected
+    global glb_employees_selected
     glb_cursor.execute(
         "Select productID, Name, productRetailPrice from [dbo].[ProductModels]"
         "where productBarcodeID=?", prdct_barcode)
@@ -193,7 +193,7 @@ def get_product_based_on_barcod(prdct_barcode, salesObj):
         salesObj.salesID = glb_customer_no
         salesObj.salesLineID = glb_sales_line_id
         glb_sales_line_id = glb_sales_line_id+1
-        salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employeeselected][0]
+        salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
         salesObj.productID = row[0]
         salesObj.amount = 1
         salesObj.Name = row[1]
@@ -723,7 +723,7 @@ class MainWindow(tk.Tk):
 
     def btn_change_user_clicked(self):
         global top
-        global glb_employeeselected
+        global glb_employees_selected
         global glb_customer_no
 
         glb_sales.clear()
@@ -732,7 +732,7 @@ class MainWindow(tk.Tk):
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
         self.employee_frame_def()
-        glb_employeeselected = ""
+        glb_employees_selected = ""
 
     def call_back_customer_no_clicked(self, btn):
         salesID=btn.cget("text")
@@ -762,13 +762,13 @@ class MainWindow(tk.Tk):
     def new_customer_clicked(self):
         global top
         global glb_sales_line_id
-        global glb_employeeselected
+        global glb_employees_selected
         global glb_customer_no
 
         self.message_box_text.delete("1.0", END)
         glb_sales.clear()
         salescounterobj = SalesCounter()
-        glb_customer_no = salescounterobj.getcounter()
+        glb_customer_no = salescounterobj.get_counter()
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
         glb_sales_line_id = 1
@@ -778,7 +778,7 @@ class MainWindow(tk.Tk):
 
         global top
         global glb_sales_line_id
-        global glb_employeeselected
+        global glb_employees_selected
         global glb_customer_no
 
         sales_save(-2)
@@ -824,10 +824,10 @@ class MainWindow(tk.Tk):
 
     def checkreyon(self, event: object):
         global glb_scaleId
-        global glb_employeeselected
+        global glb_employees_selected
 
         self.message_box_text.delete("1.0", END)
-        if glb_employeeselected != "":
+        if glb_employees_selected != "":
             tt = self.select_reyon.get()
             glb_scaleId = self.select_reyon.current()
             teraziID = [x.teraziID for x in glb_reyons if x.ReyonName == tt][0]
@@ -843,11 +843,11 @@ class MainWindow(tk.Tk):
 
     def employee_button_clicked(self, btn):
         global glb_scaleId
-        global glb_employeeselected
+        global glb_employees_selected
         self.message_box_text.delete("1.0", END)
         glb_scaleId = self.select_reyon.current()
         if glb_scaleId != -1:
-            glb_employeeselected = btn.cget("text")
+            glb_employees_selected = btn.cget("text")
             for child in self.product_frame.winfo_children():
                 child.destroy()
             self.display_frame.grid(row=0, column=0, columnspan=2)
@@ -893,7 +893,7 @@ class MainWindow(tk.Tk):
 
     def product_button_clicked(self, btn):
         global glb_sales_line_id
-        global glb_employeeselected
+        global glb_employees_selected
         global glb_customer_no
 
         if (glb_customer_no != 0):
@@ -902,7 +902,7 @@ class MainWindow(tk.Tk):
             salesObj.salesID = glb_customer_no
             salesObj.salesLineID = glb_sales_line_id
             glb_sales_line_id = glb_sales_line_id + 1
-            salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employeeselected][0]
+            salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
             salesObj.amount = float(self.scale_display.get("1.0", END).strip("\n"))
             salesObj.retailPrice = [x.price for x in glb_product_names if x.Name == salesObj.Name][0]
             salesObj.productID = [x.productID for x in glb_product_names if x.Name == salesObj.Name][0]
