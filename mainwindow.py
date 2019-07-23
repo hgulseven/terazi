@@ -389,6 +389,8 @@ class MainWindow(tk.Tk):
         btn_no = 0
         for btn_no, customer_obj in enumerate(glb_active_served_customers):
             button = tk.Button(self.product_frame, text=customer_obj.Name)
+        for btn_no, customer_obj in enumerate(glb_active_served_customers):
+            button = tk.Button(self.product_frame, text=customer_obj.customerNo)
             button.configure(command=lambda btn=button: self.customer_button_clicked(btn))
             button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9",
                              disabledforeground="#a3a3a3")
@@ -423,6 +425,32 @@ class MainWindow(tk.Tk):
         btn_no = 0
         for btn_no, customer_obj in enumerate(glb_customers_on_cashier):
             button = tk.Button(self.product_frame, text=customer_obj.Name)
+            button.configure(command=lambda btn=button: self.call_back_customer_no_clicked(btn))
+            button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9",
+                             disabledforeground="#a3a3a3")
+            button.configure(font=font11, foreground="#000000", highlightbackground="#d9d9d9", highlightcolor="black",
+                             pady="0", width=13, height=2)
+            button.configure(wraplength=130)
+            button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
+
+
+    def call_back_customer_frame_def(self):
+        global glb_customers_on_cashier
+        global top
+        global glb_active_product_frame_content
+        font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
+                 "roman -underline 0 -overstrike 0"
+        glb_active_product_frame_content = 3
+        glb_customers_on_cashier.clear()
+        for child in self.product_frame.winfo_children():
+            child.destroy()
+        self.product_frame.place(relx=0.28, rely=0.110, relheight=0.440, relwidth=0.700)
+        self.product_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
+        row_size, col_size = 4, 3
+        get_customers_on_cashier()
+        btn_no = 0
+        for btn_no, customer_obj in enumerate(glb_customers_on_cashier):
+            button = tk.Button(self.product_frame, text=customer_obj.customerNo)
             button.configure(command=lambda btn=button: self.call_back_customer_no_clicked(btn))
             button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9",
                              disabledforeground="#a3a3a3")
@@ -716,6 +744,18 @@ class MainWindow(tk.Tk):
         self.update_products_sold()
         self.product_frame_def()
 
+    def call_back_customer_no_clicked(self, btn):
+        salesID=btn.cget("text")
+        glb_sales.clear()
+        sales_load(salesID, 0)
+        sales_update(salesID, 0, -1)
+        self.customer_no.delete('1.0', END)
+        self.customer_no.insert(END, glb_customer_no)
+        self.update_products_sold()
+        self.product_frame_def()
+        resp = requests.get("http://gulsevensrv/api/DataRefresh")
+
+
     def call_back_customer_clicked(self):
         self.call_back_customer_frame_def()
 
@@ -797,6 +837,7 @@ class MainWindow(tk.Tk):
             self.product_frame_def()
             self.functions_frame_def()
             self.select_reyon.current(glb_scaleId)
+            self.prdct_barcode.focus_set()
         else:
             self.message_box_text.insert(END, "Çalışan seçilmeden işleme devam edilemez")
 
@@ -877,7 +918,7 @@ class MainWindow(tk.Tk):
         # top.geometry("800x480+1571+152")
         top.title("Terazi Ara Yüzü")
         top.configure(background="#d9d9d9")
-        windows_env = 1
+        windows_env = 0
         serial_data = ''
         filter_data = ''
         update_period = 60
