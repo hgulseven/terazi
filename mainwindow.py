@@ -7,6 +7,7 @@ import serial
 import datetime
 import time
 import requests
+import cursor
 
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salesCounter table.
@@ -171,14 +172,20 @@ def sales_load(salesID, typeOfCollection):
         glb_sales_line_id = glb_sales_line_id + 1
 
 
+
 def get_product_based_on_barcod(prdct_barcode, salesObj):
     global glb_cursor
     global glb_sales_line_id
     global glb_customer_no
     global glb_employees_selected
-    glb_cursor.execute(
-        "Select productID, productName, productRetailPrice from [dbo].[ProductModels]"
-        "where productBarcodeID=?", prdct_barcode)
+
+    try:
+        glb_cursor.execute(
+            "Select productID, productName, productRetailPrice from [dbo].[ProductModels]"
+            "where productBarcodeID=?", prdct_barcode)
+    except:
+        connectdb()
+        return
     for row in glb_cursor:
         salesObj.salesID = glb_customer_no
         salesObj.salesLineID = glb_sales_line_id
@@ -241,6 +248,19 @@ def load_products(self, ID):
         productObj.Name = row[2]
         productObj.price = float(row[3])
         glb_product_names.append(productObj)
+
+def connectdb():
+    global glb_cursor
+    glb_cursor.close()
+    db_connected = FALSE
+    while not db_connected:
+        try:
+            conn = pyodbc.connect(glb_connection_str)
+            db_connected = TRUE
+        except:
+            db_connected = FALSE
+            time.sleep(2)
+    glb_cursor = conn.cursor()
 
 
 class loadTables:
@@ -380,6 +400,8 @@ class MainWindow(tk.Tk):
 
     def read_barcode(self, event):
         global glb_sales
+        root.config(cursor="watch")
+        root.update()
         textdata = self.prdct_barcode.get('1.0', END)
         textdata = textdata.rstrip("\n")
         textdata = textdata.lstrip("\n")
@@ -388,6 +410,7 @@ class MainWindow(tk.Tk):
         get_product_based_on_barcod(textdata, salesObj)
         glb_sales.append(salesObj)
         self.update_products_sold()
+        root.config(cursor="")
 
 
     def add_frame_buttons(self, active_served_customers, frame, list, page_count, func):
@@ -545,7 +568,8 @@ class MainWindow(tk.Tk):
         global glb_active_customers_page_count
         global glb_employees_page_count
         global glb_active_product_frame_content
-
+        root.config(cursor="watch")
+        root.update()
         if glb_active_product_frame_content == 0:  # Middle frame is used for employees
             glb_employees_page_count = glb_employees_page_count + 1
             varfunc = self.employee_button_clicked
@@ -562,6 +586,7 @@ class MainWindow(tk.Tk):
             glb_callback_customers_page_count = glb_callback_customers_page_count + 1
             varfunc = self.call_back_customer_no_clicked
             glb_callback_customers_page_count = self.add_frame_buttons(0, self.product_frame,glb_customers_on_cashier,glb_callback_customers_page_count, varfunc)
+        root.config(cursor="")
 
     def previous_product_button_clicked(self):
         global glb_product_page_count
@@ -569,7 +594,8 @@ class MainWindow(tk.Tk):
         global glb_active_customers_page_count
         global glb_employees_page_count
         global glb_active_product_frame_content
-
+        root.config(cursor="watch")
+        root.update()
         if glb_active_product_frame_content == 0:  # Middle frame is used for employees
             if glb_employees_page_count > 0:
                 glb_employees_page_count = glb_employees_page_count - 1
@@ -590,21 +616,25 @@ class MainWindow(tk.Tk):
                glb_callback_customers_page_count = glb_callback_customers_page_count - 1
             varfunc = self.call_back_customer_no_clicked
             glb_callback_customers_page_count = self.add_frame_buttons(0, self.product_frame,glb_customers_on_cashier,glb_callback_customers_page_count, varfunc)
+        root.config(cursor="")
 
     def customer_button_clicked(self, btn):
         global glb_customer_no
-
+        root.config(cursor="watch")
+        root.update()
         glb_customer_no = btn.cget("text")
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
         sales_load(glb_customer_no, -1)
         self.product_frame_def()
         self.update_products_sold()
+        root.config(cursor="")
 
     def btn_send_cashier_clicked(self):
         global glb_customer_no
         global glb_sales_line_id
-
+        root.config(cursor="watch")
+        root.update()
         sales_save(-1)
         sales_update(glb_customer_no, -1,
                      0)  # update which has value -1 (actively served customer) to 0 (sent to cashier)
@@ -616,12 +646,14 @@ class MainWindow(tk.Tk):
         self.customer_no.insert(END, "0")
         resp = requests.get("http://gulsevensrv/api/DataRefresh")
         self.new_customer_clicked()
+        root.config(cursor="")
 
     def btn_change_user_clicked(self):
         global top
         global glb_employees_selected
         global glb_customer_no
-
+        root.config(cursor="watch")
+        root.update()
         glb_sales.clear()
         glb_customer_no = 0
         self.update_products_sold()
@@ -629,8 +661,11 @@ class MainWindow(tk.Tk):
         self.customer_no.insert(END, glb_customer_no)
         self.employee_frame_def()
         glb_employees_selected = ""
+        root.config(cursor="")
 
     def call_back_customer_no_clicked(self, btn):
+        root.config(cursor="watch")
+        root.update()
         salesID = btn.cget("text")
         glb_sales.clear()
         sales_load(salesID, 0)
@@ -640,16 +675,21 @@ class MainWindow(tk.Tk):
         self.update_products_sold()
         self.product_frame_def()
         resp = requests.get("http://gulsevensrv/api/DataRefresh")
+        root.config(cursor="")
 
     def call_back_customer_clicked(self):
+        root.config(cursor="watch")
+        root.update()
         self.call_back_customer_frame_def()
+        root.config(cursor="")
 
     def new_customer_clicked(self):
         global top
         global glb_sales_line_id
         global glb_employees_selected
         global glb_customer_no
-
+        root.config(cursor="watch")
+        root.update()
         self.message_box_text.delete("1.0", END)
         glb_sales.clear()
         salescounterobj = SalesCounter()
@@ -658,12 +698,15 @@ class MainWindow(tk.Tk):
         self.customer_no.insert(END, glb_customer_no)
         glb_sales_line_id = 1
         self.product_frame_def()
+        root.config(cursor="")
 
     def btn_cancelsale_clicked(self):
         global top
         global glb_sales_line_id
         global glb_employees_selected
         global glb_customer_no
+        root.config(cursor="watch")
+        root.update()
         sales_save(-2)
         self.message_box_text.delete("1.0", END)
         glb_sales.clear()
@@ -673,9 +716,12 @@ class MainWindow(tk.Tk):
         glb_sales_line_id = 1
         glb_customer_no = 0
         self.new_customer_clicked()
+        root.config(cursor="")
 
     def btn_savesale_clicked(self):
         global glb_sales_line_id
+        root.config(cursor="watch")
+        root.update()
         sales_save(-1)
         self.message_box_text.delete("1.0", END)
         glb_sales.clear()
@@ -684,30 +730,41 @@ class MainWindow(tk.Tk):
         self.customer_no.insert(END, "0")
         glb_sales_line_id = 1
         self.btn_change_user_clicked()
+        root.config(cursor="")
 
     def btn_dara_clicked(self):
         global glb_base_weight
+        root.config(cursor="watch")
+        root.update()
         glb_base_weight = float(self.scale_display.get("1.0", END).strip("\n"))
         self.scale_display.delete("1.0", END)
         self.scale_display.insert(END, "0.000".rjust(20))
+        root.config(cursor="")
 
     def btn_cleardara_clicked(self):
         global glb_base_weight
+        root.config(cursor="watch")
+        root.update()
         glb_base_weight = 0
         floatval = float(filter_data) - glb_base_weight
         mydata = "{:10.3f}".format(floatval)
         mydata = mydata.rjust(20)
         self.scale_display.delete("1.0", END)
         self.scale_display.insert(END, mydata)
+        root.config(cursor="")
 
     def btn_clearlasttransaction_clicked(self):
+        root.config(cursor="watch")
+        root.update()
         glb_sales.pop(-1)
         self.update_products_sold()
+        root.config(cursor="")
 
     def checkreyon(self, event: object):
         global glb_scaleId
         global glb_employees_selected
-
+        root.config(cursor="watch")
+        root.update()
         self.message_box_text.delete("1.0", END)
         if glb_employees_selected != "":
             tt = self.select_reyon.get()
@@ -722,10 +779,13 @@ class MainWindow(tk.Tk):
             self.prdct_barcode.focus_set()
         else:
             self.message_box_text.insert(END, "Çalışan seçilmeden işleme devam edilemez")
+        root.config(cursor="")
 
     def employee_button_clicked(self, btn):
         global glb_scaleId
         global glb_employees_selected
+        root.config(cursor="watch")
+        root.update()
         self.message_box_text.delete("1.0", END)
         glb_scaleId = self.select_reyon.current()
         if glb_scaleId != -1:
@@ -760,6 +820,7 @@ class MainWindow(tk.Tk):
             self.prdct_barcode.focus_set()
         else:
             self.message_box_text.insert(END, "Reyon Seçimini Yapmadan Personel Seçimi Yapılamaz")
+        root.config(cursor="")
 
     def update_products_sold(self):
         self.entry_products.delete("1.0", END)
@@ -801,7 +862,7 @@ class MainWindow(tk.Tk):
         # top.geometry("800x480+1571+152")
         top.title("Terazi Ara Yüzü")
         top.configure(background="#d9d9d9")
-        windows_env = 1
+        windows_env = 0
         serial_data = ''
         filter_data = ''
         update_period = 60
