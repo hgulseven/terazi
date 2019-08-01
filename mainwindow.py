@@ -736,7 +736,7 @@ class MainWindow(tk.Tk):
         global glb_base_weight
         root.config(cursor="watch")
         root.update()
-        glb_base_weight = float(self.scale_display.get("1.0", END).strip("\n"))
+        glb_base_weight = glb_base_weight + float(self.scale_display.get("1.0", END).strip("\n"))
         self.scale_display.delete("1.0", END)
         self.scale_display.insert(END, "0.000".rjust(20))
         root.config(cursor="")
