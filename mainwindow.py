@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import *
 from tkinter.ttk import *
-import pyodbc
 import threading
 import serial
 import datetime
@@ -11,10 +10,10 @@ from datetime import datetime
 import cursor
 import mysql.connector
 from mysql.connector import Error
-from PIL import Image, ImageTk
 
 #Connection data
-glb_host = "192.168.0.107"
+glb_host = "192.168.1.54"
+glb_webHost = "192.168.1.54"
 glb_database = "order_and_sales_management"
 glb_user = "hakan"
 glb_password = "QAZwsx135"
@@ -34,7 +33,7 @@ glb_SelectProductByBarcode ="""Select productID, productName, productRetailPrice
 glb_SelectCustomers = "Select distinct salesID from SalesModels where  typeOfCollection = -1 order by salesID;"
 glb_SelectCustomersOnCashier = "Select  distinct salesID from SalesModels where  typeOfCollection = 0 order by salesID;"
 
-glb_windows_env = 1 # 1 Windows 0 Linux
+glb_windows_env = 0 # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salesCounter table.
 top = None
@@ -52,7 +51,6 @@ glb_customers_on_cashier = []  # customers that were sent to cashier. Actively w
 # 3:Call back customers
 # this variable is used for next, previous buttons and set when page display content is changed
 glb_active_product_frame_content = 0  # shows contents of product frame which is used more than one purpose
-glb_connection_str = 'DSN=GULSEVEN;UID=sa;PWD=QAZwsx135'
 glb_scaleId = 0
 glb_employees_selected = ''  # name of the selected employee.
 glb_sales_line_id = 1  # line of the sales
@@ -393,12 +391,13 @@ def load_products(self, ID):
 
 def connectdb():
     global glb_cursor
+    global glb_host
     if glb_cursor != 0:
         glb_cursor.close()
     db_connected = FALSE
     while not db_connected:
         try:
-            conn =  mysql.connector.connect(host='192.168.0.107',
+            conn =  mysql.connector.connect(host=glb_host,
                                             database='order_and_sales_management',
                                             user='hakan',
                                             password='QAZwsx135') # pyodbc.connect(glb_connection_str)
@@ -509,14 +508,14 @@ class MainWindow(tk.Tk):
         next_button = tk.Button(self.paging_frame, text="Sonraki Sayfa")
         next_button.configure(activebackground="#ececec", activeforeground="#000000", background="dark red")
         next_button.configure(disabledforeground="#a3a3a3", font=font11, foreground="white")
-        next_button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=14, height=2,
+        next_button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=14, height=3,
                               wraplength=130)
         next_button.configure(command=lambda btn=next_button: self.next_product_button_clicked())
         next_button.grid(row=0, column=2)
         previous_button = tk.Button(self.paging_frame, text="Önceki Sayfa")
         previous_button.configure(activebackground="#ececec", activeforeground="#000000", background="dark red")
         previous_button.configure(disabledforeground="#a3a3a3", font=font11, foreground="white")
-        previous_button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=14, height=2,
+        previous_button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=14, height=3,
                                   wraplength=130)
         previous_button.configure(command=lambda btn=previous_button: self.previous_product_button_clicked())
         previous_button.grid(row=0, column=0)
@@ -598,11 +597,11 @@ class MainWindow(tk.Tk):
 
 
     def add_frame_buttons(self, active_served_customers, frame, list, page_count, func):
-        font11 = "-family {Segoe UI} -size 14 -weight bold -slant " \
+        font11 = "-family {Segoe UI} -size 17 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         for child in frame.winfo_children():  # Clear frame contents whatever it is
             child.destroy()
-        row_size, col_size = 4, 3  # grid in the frame is 4 by 3
+        row_size, col_size = 5, 2  # grid in the frame is 4 by 3
         lower_cnt = page_count * row_size * col_size  # calculate lower bound in the list
         while lower_cnt > len(list):  # if lower bound is more than list size adjust it
             page_count = page_count - 1
@@ -617,7 +616,7 @@ class MainWindow(tk.Tk):
             button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
             button.configure(disabledforeground="#a3a3a3", font=font11, foreground="#000000")
             button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=26, height=2,
-                             wraplength=200)
+                             wraplength=400)
             button.configure(command=lambda btn=button: func(btn))
             button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
             btn_no = btn_no + 1
@@ -683,8 +682,8 @@ class MainWindow(tk.Tk):
         self.functions_frame.place(relx=0.0, rely=0.700, relheight=0.200, relwidth=0.994)
         self.functions_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9")
         self.functions_frame.configure(highlightbackground="#f0f0f0", width=795)
-        buttons_height = 50
-        buttons_width = 200
+        buttons_height = 65
+        buttons_width = 250
         self.btn_dara = tk.Button(self.functions_frame)
         self.btn_dara.configure(command=lambda btn=self.btn_dara: self.btn_dara_clicked())
         self.btn_dara.place(relx=0.013, rely=0.050, height=buttons_height, width=buttons_width)
@@ -833,7 +832,7 @@ class MainWindow(tk.Tk):
         glb_sales_line_id = 1
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, "0")
-        resp = requests.get("http://192.168.0.107/api/DataRefresh")
+        resp = requests.get("http://"+glb_webHost+"/api/DataRefresh")
         self.new_customer_clicked()
         root.config(cursor="")
 
@@ -863,7 +862,7 @@ class MainWindow(tk.Tk):
         self.customer_no.insert(END, glb_customer_no)
         self.update_products_sold()
         self.product_frame_def()
-        resp = requests.get("http://192.168.0.107/api/DataRefresh")
+        resp = requests.get("http://"+glb_webHost+"/api/DataRefresh")
         root.config(cursor="")
 
     def call_back_customer_clicked(self):
@@ -1031,13 +1030,13 @@ class MainWindow(tk.Tk):
         sum_calculated_price = 0
         for salesObj in glb_sales:
             self.newWindow.products_sold.insert(END, salesObj.Name + "\n")
-            self.newWindow.products_sold_amount.insert(END,"{:.3f}\n".format(salesObj.amount).rjust(12, ' '),"right")
+            self.newWindow.products_sold_amount.insert(END,"{:.3f}\n".format(salesObj.amount).rjust(8, ' '),"right")
             calculated_price = float(salesObj.amount * float(salesObj.retailPrice))
             sum_calculated_price = sum_calculated_price + calculated_price
-            myData = "{:.2f}\n".format(calculated_price).rjust(12, ' ')
+            myData = "{:.2f}\n".format(calculated_price).rjust(8, ' ')
             self.newWindow.products_sold_price.insert(END, myData,"right")
         self.newWindow.products_sold_total.delete("1.0", END)
-        self.newWindow.products_sold_total.insert(END, "{:.2f}".format(sum_calculated_price).rjust(12, ' '),"right")
+        self.newWindow.products_sold_total.insert(END, "{:.2f}".format(sum_calculated_price).rjust(8, ' '),"right")
 
     def product_button_clicked(self, btn):
         global glb_sales_line_id
@@ -1062,7 +1061,7 @@ class MainWindow(tk.Tk):
             self.message_box_text.insert(END, "Yeni Müşteri Seçilmeden Ürün Seçimi Yapılamaz")
 
     def __init__(self, top=None):
-        w, h = top.winfo_screenwidth(), root.winfo_screenheight()
+        w, h = top.winfo_screenwidth()/2, root.winfo_screenheight()
         top.geometry("%dx%d+0+0" % (w, h))
         # top.geometry("800x480+1571+152")
         top.title("Terazi Ara Yüzü")
@@ -1109,6 +1108,7 @@ class MainWindow(tk.Tk):
         font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
                 " -underline 0 -overstrike 0"
         self.newWindow = tk.Toplevel(self.master)
+        self.newWindow.geometry("%dx%d+1200+0" % (w, h))
         self.newWindow.title("Müşteri Bilgi Ekranı")
 #        load = Image.open("logo.png")
 #        render = ImageTk.PhotoImage(load)
@@ -1163,10 +1163,7 @@ def connect(new_data, env, baud, port):
 
     try:
         if env == 2:
-            try:
-                serial_object = serial.Serial('/dev/tty' + str(port), baud)
-            except:
-                print("Cant Open Specified Port")
+                serial_object = serial.Serial(port='/dev/tty' + str(port), baudrate=baud)
         elif env == 1:
             serial_object = serial.Serial('COM' + str(port), baud)
     except ValueError:
@@ -1227,7 +1224,7 @@ def update_gui(scale_display, new_data):
             scale_display.delete(1.0, END)
             floatval = float(filter_data) - glb_base_weight
             mydata = "{:10.3f}".format(floatval)
-            mydata = mydata.rjust(16)
+            mydata = mydata.rjust(13)
             scale_display.insert(END, mydata)
 
 
