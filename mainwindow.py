@@ -503,7 +503,7 @@ class MainWindow(tk.Tk):
         global top
         font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
-        self.paging_frame.place(relx=0.28, rely=0.560, relheight=0.120, relwidth=0.700)
+        self.paging_frame.place(relx=0.360, rely=0.560, relheight=0.120, relwidth=0.620)
         self.paging_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
         next_button = tk.Button(self.paging_frame, text="Sonraki Sayfa")
         next_button.configure(activebackground="#ececec", activeforeground="#000000", background="dark red")
@@ -597,7 +597,7 @@ class MainWindow(tk.Tk):
 
 
     def add_frame_buttons(self, active_served_customers, frame, list, page_count, func):
-        font11 = "-family {Segoe UI} -size 17 -weight bold -slant " \
+        font11 = "-family {Segoe UI} -size 16 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         for child in frame.winfo_children():  # Clear frame contents whatever it is
             child.destroy()
@@ -615,7 +615,7 @@ class MainWindow(tk.Tk):
             button = tk.Button(frame, text=obj.Name)
             button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
             button.configure(disabledforeground="#a3a3a3", font=font11, foreground="#000000")
-            button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=26, height=2,
+            button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=24, height=2,
                              wraplength=400)
             button.configure(command=lambda btn=button: func(btn))
             button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
@@ -628,7 +628,7 @@ class MainWindow(tk.Tk):
             button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9",
                              disabledforeground="#a3a3a3")
             button.configure(font=font11, foreground="#000000", highlightbackground="#d9d9d9", highlightcolor="black",
-                             pady="0", width=26, height=2)
+                             pady="0", width=24, height=2)
             button.configure(wraplength=200)
             button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
         return page_count
@@ -637,7 +637,7 @@ class MainWindow(tk.Tk):
         global top
         global glb_active_product_frame_content
         global glb_product_page_count
-        self.product_frame.place(relx=0.28, rely=0.110, relheight=0.440, relwidth=0.700)
+        self.product_frame.place(relx=0.360, rely=0.110, relheight=0.440, relwidth=0.620)
         self.product_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9", width=635)
         glb_active_product_frame_content = 1
         varfunc = self.product_button_clicked
@@ -645,34 +645,36 @@ class MainWindow(tk.Tk):
 
     def productssold_frame_def(self):
         global top
-        font11 = "-family {Segoe UI} -size 8 -slant " \
+        font12 = "-family {Segoe UI} -size 12 -weight bold -slant " \
+                 "roman -underline 0 -overstrike 0"
+        font10 = "-family {Segoe UI} -size 10 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
                 " -underline 0 -overstrike 0"
-        self.products_sold_frame.place(relx=0.0, rely=0.110, relheight=0.550, relwidth=0.280)
+        self.products_sold_frame.place(relx=0.0, rely=0.110, relheight=0.550, relwidth=0.350)
         self.products_sold_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9",
                                            highlightbackground="#d9d9d9")
         self.products_sold_frame.configure(highlightcolor="black", width=155)
         self.entry_products = tk.Text(self.products_sold_frame)
-        self.entry_products.place(relx=0.010, rely=0.02, relheight=0.84, relwidth=0.700)
-        self.entry_products.configure(font=font11)
+        self.entry_products.place(relx=0.010, rely=0.02, relheight=0.84, relwidth=0.750)
+        self.entry_products.configure(font=font10)
         self.entry_products.configure(takefocus="")
         self.entry_calculatedtotal = tk.Text(self.products_sold_frame)
         self.entry_calculatedtotal.tag_configure("right",justify=RIGHT)
         self.entry_calculatedtotal.tag_add("right",1.0,"end")
-        self.entry_calculatedtotal.place(relx=0.720, rely=0.02, relheight=0.84, relwidth=0.240)
-        self.entry_calculatedtotal.configure(font=font11, takefocus="")
+        self.entry_calculatedtotal.place(relx=0.750, rely=0.02, relheight=0.84, relwidth=0.240)
+        self.entry_calculatedtotal.configure(font=font10, takefocus="")
         self.label_sum = tk.Label(self.products_sold_frame)
         self.label_sum.place(relx=0.040, rely=0.88, relheight=0.10, relwidth=0.300)
-        self.label_sum.configure(background="#d9d9d9")
+        # self.label_sum.configure(background="#d9d9d9")
         self.label_sum.configure(disabledforeground="#a3a3a3")
-        self.label_sum.configure(font=font9)
+        self.label_sum.configure(font=font12)
         self.label_sum.configure(foreground="#000000")
         self.label_sum.configure(text='''Toplam''')
-        self.entry_sum = tk.Text(self.products_sold_frame, height=1, width=80, font=("Arial Bold", 12))
+        self.entry_sum = tk.Text(self.products_sold_frame, height=1, width=80, font=font12)
         self.entry_sum.tag_configure("right",justify=RIGHT)
         self.entry_sum.tag_add("right",1.0,"end")
-        self.entry_sum.place(relx=0.720, rely=0.88, relheight=0.10, relwidth=0.250)
+        self.entry_sum.place(relx=0.750, rely=0.88, relheight=0.10, relwidth=0.250)
 
     def functions_frame_def(self):
         global top
@@ -816,6 +818,7 @@ class MainWindow(tk.Tk):
         sales_load(glb_customer_no, -1)
         self.product_frame_def()
         self.update_products_sold()
+        self.update_products_sold_for_customer()
         root.config(cursor="")
 
     def btn_send_cashier_clicked(self):
@@ -828,6 +831,7 @@ class MainWindow(tk.Tk):
                      0)  # update which has value -1 (actively served customer) to 0 (sent to cashier)
         glb_sales.clear()
         self.update_products_sold()
+        self.update_products_sold_for_customer()
         glb_customer_no = 0
         glb_sales_line_id = 1
         self.customer_no.delete('1.0', END)
@@ -845,6 +849,7 @@ class MainWindow(tk.Tk):
         glb_sales.clear()
         glb_customer_no = 0
         self.update_products_sold()
+        self.update_products_sold_for_customer()
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
         self.employee_frame_def()
@@ -861,6 +866,7 @@ class MainWindow(tk.Tk):
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
         self.update_products_sold()
+        self.update_products_sold_for_customer()
         self.product_frame_def()
         resp = requests.get("http://"+glb_webHost+"/api/DataRefresh")
         root.config(cursor="")
@@ -946,6 +952,7 @@ class MainWindow(tk.Tk):
         root.update()
         glb_sales.pop(-1)
         self.update_products_sold()
+        self.update_products_sold_for_customer()
         root.config(cursor="")
 
     def checkreyon(self, event: object):
@@ -1015,7 +1022,7 @@ class MainWindow(tk.Tk):
         self.entry_calculatedtotal.delete("1.0", END)
         sum_calculated_price = 0
         for salesObj in glb_sales:
-            self.entry_products.insert(END, salesObj.Name + "\n")
+            self.entry_products.insert(END, " "+salesObj.Name + "\n")
             calculated_price = float(salesObj.amount * float(salesObj.retailPrice))
             sum_calculated_price = sum_calculated_price + calculated_price
             myData = "{:.2f}\n".format(calculated_price).rjust(8, ' ')
@@ -1101,7 +1108,7 @@ class MainWindow(tk.Tk):
         if glb_windows_env:
             connect(new_data, 1, 9600, '5')
         else:
-            connect(new_data, 2, 9600, 'USB0')
+            connect(new_data, 2, 9600, 'USB1')
 
         font18 = "-family {Segoe UI} -size 18 -slant " \
                  "roman -underline 0 -overstrike 0"
@@ -1109,43 +1116,47 @@ class MainWindow(tk.Tk):
                 " -underline 0 -overstrike 0"
         self.newWindow = tk.Toplevel(self.master)
         self.newWindow.geometry("%dx%d+1200+0" % (w, h))
+        self.newWindow.attributes("-fullscreen", True)
         self.newWindow.title("Müşteri Bilgi Ekranı")
 #        load = Image.open("logo.png")
 #        render = ImageTk.PhotoImage(load)
 #        img = Label(self.newWindow, image=render)
 #        img.place(relx=0.300, rely=0.01, relheight=0.09, relwidth=0.50)
 #        img.image = render
+        self.newWindow.company_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
+        self.newWindow.company_label.place(relx=0.40, rely=0.0, relheight=0.05, relwidth=0.200)
+        self.newWindow.company_label.config(text='''G Ü L S E V EN''',fg='dark red')
         self.newWindow.products_sold_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_label.place(relx=0.010, rely=0.0, relheight=0.1, relwidth=0.700)
-        self.newWindow.products_sold_label.config(text='''Ürün''',anchor=W)
+        self.newWindow.products_sold_label.place(relx=0.010, rely=0.05, relheight=0.1, relwidth=0.700)
+        self.newWindow.products_sold_label.config(text=''' Ürün''',anchor=W,bg='dark red',fg='white')
         self.newWindow.products_sold = tk.Text(self.newWindow, height=2, width=30)
-        self.newWindow.products_sold.place(relx=0.010, rely=0.1, relheight=0.70, relwidth=0.700)
+        self.newWindow.products_sold.place(relx=0.010, rely=0.16, relheight=0.70, relwidth=0.700)
         self.newWindow.products_sold.configure(font=font18)
         self.newWindow.products_sold.configure(takefocus="")
         self.newWindow.products_sold_amount_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_amount_label.place(relx=0.720, rely=0.0, relheight=0.1, relwidth=0.10)
-        self.newWindow.products_sold_amount_label.config(text='''Miktar''',anchor=E)
+        self.newWindow.products_sold_amount_label.place(relx=0.720, rely=0.05, relheight=0.1, relwidth=0.10)
+        self.newWindow.products_sold_amount_label.config(text='''Miktar ''',anchor=E,bg='dark red',fg='white')
         self.newWindow.products_sold_amount = tk.Text(self.newWindow, height=2, width=10)
         self.newWindow.products_sold_amount.tag_configure("right",justify=RIGHT)
         self.newWindow.products_sold_amount.tag_add("right",1.0,"end")
-        self.newWindow.products_sold_amount.place(relx=0.720,rely=0.1,relheight=0.70,relwidth=0.10)
+        self.newWindow.products_sold_amount.place(relx=0.720,rely=0.16,relheight=0.70,relwidth=0.10)
         self.newWindow.products_sold_amount.configure(font=font18)
         self.newWindow.products_sold_price_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_price_label.place(relx=0.830, rely=0.0, relheight=0.1, relwidth=0.10)
-        self.newWindow.products_sold_price_label.config(text='''Tutar''',anchor=E)
+        self.newWindow.products_sold_price_label.place(relx=0.830, rely=0.05, relheight=0.1, relwidth=0.15)
+        self.newWindow.products_sold_price_label.config(text='''Tutar ''',anchor=E,bg='dark red', fg='white')
         self.newWindow.products_sold_price= tk.Text(self.newWindow, height=2, width=10)
         self.newWindow.products_sold_price.tag_configure("right",justify=RIGHT)
         self.newWindow.products_sold_price.tag_add("right",1.0,"end")
-        self.newWindow.products_sold_price.place(relx=0.830,rely=0.1,relheight=0.70,relwidth=0.10)
+        self.newWindow.products_sold_price.place(relx=0.830,rely=0.16,relheight=0.70,relwidth=0.15)
         self.newWindow.products_sold_price.configure(font=font18)
         self.newWindow.products_sold_total_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_total_label.place(relx=0.010, rely=0.82, relheight=0.1, relwidth=0.800)
-        self.newWindow.products_sold_total_label.config(text='''TOPLAM''',anchor=W)
+        self.newWindow.products_sold_total_label.place(relx=0.720, rely=0.87, relheight=0.1, relwidth=0.10)
+        self.newWindow.products_sold_total_label.config(text=''' TOPLAM ''',anchor=NW,bg='dark red',fg='white')
         self.newWindow.products_sold_total= tk.Text(self.newWindow, height=2, width=10)
         self.newWindow.products_sold_total.tag_configure("right",justify=RIGHT)
         self.newWindow.products_sold_total.tag_add("right",1.0,"end")
-        self.newWindow.products_sold_total.place(relx=0.830,rely=0.82,relheight=0.10,relwidth=0.10)
-        self.newWindow.products_sold_total.configure(font=font18)
+        self.newWindow.products_sold_total.place(relx=0.830,rely=0.87,relheight=0.10,relwidth=0.15)
+        self.newWindow.products_sold_total.configure(font=font18,bg='dark red',fg='white')
 
 def connect(new_data, env, baud, port):
     """The function initiates the Connection to the UART device with the Port and Buad fed through the Entry
