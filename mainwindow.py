@@ -12,8 +12,8 @@ import mysql.connector
 from mysql.connector import Error
 
 #Connection data
-glb_host = "192.168.1.54"
-glb_webHost = "192.168.1.54"
+glb_host = "192.168.1.45"
+glb_webHost = "192.168.1.45"
 glb_database = "order_and_sales_management"
 glb_user = "hakan"
 glb_password = "QAZwsx135"
@@ -29,7 +29,7 @@ glb_SelectSalesLineExists="""select count(*) from SalesModels where salesID=%s a
 glb_UpdateSalesLine="""update SalesModels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s where personelID=%s and typeOfCollection=%s and salesID=%s and salesLineID=%s and saleDate=%s;"""
 glb_InsertSalesLine = """insert into SalesModels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection) values (%s,%s,%s,%s,%s,%s,%s,%s);"""
 glb_SelectSales = """select  saleDate, salesID,  salesLineID, personelID, SalesModels.productID, amount, productRetailPrice, productName, typeOfCollection from SalesModels left outer join ProductModels on (SalesModels.productID= ProductModels.productID) where salesId=%s and typeOfCollection=%s;"""
-glb_SelectProductByBarcode ="""Select productID, productName, productRetailPrice from [dbo].[ProductModels]where productBarcodeID=%s;"""
+glb_SelectProductByBarcode ="""Select productID, productName, productRetailPrice from ProductModels where productBarcodeID=%s;"""
 glb_SelectCustomers = "Select distinct salesID from SalesModels where  typeOfCollection = -1 order by salesID;"
 glb_SelectCustomersOnCashier = "Select  distinct salesID from SalesModels where  typeOfCollection = 0 order by salesID;"
 
@@ -1108,7 +1108,7 @@ class MainWindow(tk.Tk):
         if glb_windows_env:
             connect(new_data, 1, 9600, '5')
         else:
-            connect(new_data, 2, 9600, 'USB1')
+            connect(new_data, 2, 9600, 'USB0')
 
         font18 = "-family {Segoe UI} -size 18 -slant " \
                  "roman -underline 0 -overstrike 0"
