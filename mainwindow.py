@@ -62,9 +62,10 @@ glb_active_customers_page_count = 0  # paging of active customers buttons displa
 glb_callback_customers_page_count = 0  # paging of callback customers buttons displayed in product frame
 
 def add_to_log(self, function, err):
-    fsize = os.stat('log.txt').st_size
-    if fsize > 50000:
-        os.rename('log.txt','log1.txt')
+    if (os.path.isfile("log.txt")):
+        fsize = os.stat('log.txt').st_size
+        if fsize > 50000:
+            os.rename('log.txt','log1.txt')
     with open('log.txt', 'a') as the_file:
         currentDate = datetime.now()
         the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
@@ -280,6 +281,7 @@ def get_product_based_on_barcod(self,prdct_barcode, salesObj):
     global glb_password
     global glb_SelectProductByBarcode
 
+    retval=1
     try:
         conn = mysql.connector.connect(host=glb_host,
                                        database=glb_database,
@@ -303,16 +305,21 @@ def get_product_based_on_barcod(self,prdct_barcode, salesObj):
                     salesObj.typeOfCollection = 0
             else:
                 add_to_log(self, "get_product_based_on_barcod",prdct_barcode + " kayıt Buulunamadı")
+                retval = 0
         else:
             add_to_log(self, "get_product_based_on_barcod","Bağlantı Hatası")
+            retval = 0
     except Error as e:
         add_to_log(self, "get_product_based_on_barcod","DB Hatası :"+e.msg)
+        retval = 0
+    return retval
 
 def get_served_customers(self):
     global glb_active_served_customers
     global glb_host
     global glb_database
     global glb_user
+
     global glb_password
     global glb_SelectCustomers
 
@@ -599,8 +606,8 @@ class MainWindow(tk.Tk):
         textdata = textdata.lstrip("\n")
         self.prdct_barcode.delete('1.0', END)
         salesObj = Sales()
-        get_product_based_on_barcod(self,textdata, salesObj)
-        glb_sales.append(salesObj)
+        if (get_product_based_on_barcod(self,textdata, salesObj)):
+            glb_sales.append(salesObj)
         self.update_products_sold()
         root.config(cursor="")
 
