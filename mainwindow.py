@@ -10,7 +10,7 @@ from datetime import datetime
 import cursor
 import mysql.connector
 from mysql.connector import Error
-import ctypes  # An included library with Python install.
+import os
 
 #Connection data
 glb_host = "192.168.1.45"
@@ -61,11 +61,14 @@ glb_employees_page_count = 0  # paging of employee buttons displayed in product 
 glb_active_customers_page_count = 0  # paging of active customers buttons displayed in product frame
 glb_callback_customers_page_count = 0  # paging of callback customers buttons displayed in product frame
 
-def add_to_log(function, err):
+def add_to_log(self, function, err):
+    fsize = os.stat('log.txt').st_size
+    if fsize > 50000:
+        os.rename('log.txt','log1.txt')
     with open('log.txt', 'a') as the_file:
         currentDate = datetime.now()
         the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
-        ctypes.windll.user32.MessageBoxW(0, function+" "+format(err), "HATA ALINDI", 1)
+        self.message_box_text.insert(END,function+" "+format(err))
 
 class Product(object):
     def __init__(self, productID=None, Name=None, price=None, teraziID=None):
@@ -129,9 +132,9 @@ class SalesCounter(object):
                 myCursor.close()
                 conn.close()
             else:
-                add_to_log("get_Counter","Bağlantı Hatası")
+                add_to_log(self, "get_Counter","Bağlantı Hatası")
         except Error as e:
-            add_to_log("get_Counter","DBError :"+e.msg)
+            add_to_log(self, "get_Counter","DBError :"+e.msg)
         return self.counter
 
 
@@ -156,7 +159,7 @@ class Sales(object):
         # 3 other type of payment;
 
 
-def sales_update(salesID, srcTypeOfCollection, destTypeOfCollection):
+def sales_update(self, salesID, srcTypeOfCollection, destTypeOfCollection):
     global glb_host
     global glb_database
     global glb_user
@@ -178,13 +181,13 @@ def sales_update(salesID, srcTypeOfCollection, destTypeOfCollection):
             myCursor.close()
             conn.close()
         else:
-            add_to_log("sales_Update","Bağlantı Hatası")
+            add_to_log(self, "sales_Update","Bağlantı Hatası")
     except Error as e:
-         add_to_log("sales_update", "DbError :"+e.msg);
+         add_to_log(self, "sales_update", "DbError :"+e.msg);
 
 
 
-def sales_save(typeOfCollection):
+def sales_save(self, typeOfCollection):
     global glb_host
     global glb_database
     global glb_user
@@ -210,6 +213,7 @@ def sales_save(typeOfCollection):
                                      (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,
                                      salesObj.productID,salesObj.amount, typeOfCollection, salesObj.personelID,
                                      salesObj.typeOfCollection, salesObj.salesID,salesObj.salesLineID,salesObj.saleDate))
+                    conn.commit()
                 else:
                     paidAmount=0.0
                     myCursor.execute(glb_InsertSalesLine,
@@ -219,12 +223,12 @@ def sales_save(typeOfCollection):
             myCursor.close()
             conn.close()
         else:
-            add_to_log("sales_save","Bağlantı Hatası")
+            add_to_log(self, "sales_save","Bağlantı Hatası")
     except Error as e:
-        add_to_log("sales_save","DBHatası :"+e.msg)
+        add_to_log(self, "sales_save","DBHatası :"+e.msg)
 
 
-def sales_load(salesID, typeOfCollection):
+def sales_load(self,salesID, typeOfCollection):
     global glb_customer_no
     global glb_sales_line_id
     global glb_customer_no
@@ -260,12 +264,12 @@ def sales_load(salesID, typeOfCollection):
                 glb_sales.append(salesObj)
                 glb_sales_line_id = glb_sales_line_id + 1
         else:
-            add_to_log("sales_load","Bağlantı Hatası")
+            add_to_log(self, "sales_load","Bağlantı Hatası")
     except Error as e:
-        add_to_log("sales_load","DBHatası :"+e.msg)
+        add_to_log(self, "sales_load","DBHatası :"+e.msg)
 
 
-def get_product_based_on_barcod(prdct_barcode, salesObj):
+def get_product_based_on_barcod(self,prdct_barcode, salesObj):
     global glb_cursor
     global glb_sales_line_id
     global glb_customer_no
@@ -297,11 +301,11 @@ def get_product_based_on_barcod(prdct_barcode, salesObj):
                 salesObj.retailPrice = row[2]
                 salesObj.typeOfCollection = 0
         else:
-            add_to_log("get_product_based_on_barcod","Bağlantı Hatası")
+            add_to_log(self, "get_product_based_on_barcod","Bağlantı Hatası")
     except Error as e:
-        add_to_log("get_product_based_on_barcod","DB Hatası :"+e.msg)
+        add_to_log(self, "get_product_based_on_barcod","DB Hatası :"+e.msg)
 
-def get_served_customers():
+def get_served_customers(self):
     global glb_active_served_customers
     global glb_host
     global glb_database
@@ -326,12 +330,12 @@ def get_served_customers():
             myCursor.close()
             conn.close()
         else:
-            add_to_log("get_served_Customers","Bağlantı Hatası")
+            add_to_log(self, "get_served_Customers","Bağlantı Hatası")
     except Error as e:
-        add_to_log("get_served_Customers","DB Hatası :"+e.msg)
+        add_to_log(self, "get_served_Customers","DB Hatası :"+e.msg)
 
 
-def get_customers_on_cashier():
+def get_customers_on_cashier(self):
     global glb_customers_on_cashier
     global glb_host
     global glb_database
@@ -356,9 +360,9 @@ def get_customers_on_cashier():
             myCursor.close()
             conn.close()
         else:
-            add_to_log("get_customers_on_cashier","Bağlantı Hatası")
+            add_to_log(self, "get_customers_on_cashier","Bağlantı Hatası")
     except Error as e:
-        add_to_log("get_customers_on_cashier","DB Hatası : "+e.msg)
+        add_to_log(self, "get_customers_on_cashier","DB Hatası : "+e.msg)
 
 
 def load_products(self, ID):
@@ -387,9 +391,9 @@ def load_products(self, ID):
             myCursor.close()
             conn.close()
         else:
-            add_to_log("load_products", "Bağlantı hatası")#Connect,on Error
+            add_to_log(self, "load_products", "Bağlantı hatası")#Connect,on Error
     except Error as e:
-        add_to_log("load_products", "DB Error :"+e.msg) #any error log it
+        add_to_log(self, "load_products", "DB Error :"+e.msg) #any error log it
 
 def connectdb():
     global glb_cursor
@@ -457,9 +461,9 @@ class loadTables:
                 myCursor.close()
                 conn.close()
             else:
-                add_to_log("LoadTables","Bağlantı Hatası")
+                add_to_log(self, "LoadTables","Bağlantı Hatası")
         except Error as e:
-            add_to_log("LoadTables","DB error :"+e.msg)
+            add_to_log(self, "LoadTables","DB error :"+e.msg)
 
 def maininit(top, gui, *args, **kwargs):
     global w, top_level, root
@@ -538,7 +542,7 @@ class MainWindow(tk.Tk):
         font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         glb_active_product_frame_content = 2
-        get_served_customers()
+        get_served_customers(self)
         varfunc = self.customer_button_clicked
         self.add_frame_buttons(1, self.product_frame, glb_active_served_customers,glb_active_customers_page_count,varfunc)
 
@@ -549,7 +553,7 @@ class MainWindow(tk.Tk):
         font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         glb_active_product_frame_content = 3
-        get_customers_on_cashier()
+        get_customers_on_cashier(self)
         varfunc = self.call_back_customer_no_clicked
         self.add_frame_buttons(0, self.product_frame,glb_customers_on_cashier,glb_callback_customers_page_count,varfunc)
 
@@ -592,7 +596,7 @@ class MainWindow(tk.Tk):
         textdata = textdata.lstrip("\n")
         self.prdct_barcode.delete('1.0', END)
         salesObj = Sales()
-        get_product_based_on_barcod(textdata, salesObj)
+        get_product_based_on_barcod(self,textdata, salesObj)
         glb_sales.append(salesObj)
         self.update_products_sold()
         root.config(cursor="")
@@ -817,7 +821,7 @@ class MainWindow(tk.Tk):
         glb_customer_no = btn.cget("text")
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
-        sales_load(glb_customer_no, -1)
+        sales_load(self,glb_customer_no, -1)
         self.product_frame_def()
         self.update_products_sold()
         self.update_products_sold_for_customer()
@@ -828,8 +832,8 @@ class MainWindow(tk.Tk):
         global glb_sales_line_id
         root.config(cursor="watch")
         root.update()
-        sales_save(-1)
-        sales_update(glb_customer_no, -1,
+        sales_save(self,-1)
+        sales_update(self,glb_customer_no, -1,
                      0)  # update which has value -1 (actively served customer) to 0 (sent to cashier)
         glb_sales.clear()
         self.update_products_sold()
@@ -863,8 +867,8 @@ class MainWindow(tk.Tk):
         root.update()
         salesID = btn.cget("text")
         glb_sales.clear()
-        sales_load(salesID, 0)
-        sales_update(salesID, 0, -1)
+        sales_load(self,salesID, 0)
+        sales_update(self,salesID, 0, -1)
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
         self.update_products_sold()
@@ -903,7 +907,7 @@ class MainWindow(tk.Tk):
         global glb_customer_no
         root.config(cursor="watch")
         root.update()
-        sales_save(-2)
+        sales_save(self,-2)
         self.message_box_text.delete("1.0", END)
         glb_sales.clear()
         self.update_products_sold()
@@ -918,8 +922,8 @@ class MainWindow(tk.Tk):
         global glb_sales_line_id
         root.config(cursor="watch")
         root.update()
-        sales_save(-1)
-        self.message_box_text.delete("1.0", END)
+        sales_save(self,-1)
+#        self.message_box_text.delete("1.0", END)
         glb_sales.clear()
         self.update_products_sold()
         self.customer_no.delete('1.0', END)
@@ -1010,7 +1014,7 @@ class MainWindow(tk.Tk):
             '''self.product_frame_def()'''
             self.functions_frame_def()
             self.select_reyon.current(glb_scaleId)
-            sales_load(glb_customer_no, -1)
+            sales_load(self,glb_customer_no, -1)
             self.update_products_sold()
             self.customer_no.delete('1.0', END)
             self.customer_no.insert(END, glb_customer_no)
@@ -1108,9 +1112,9 @@ class MainWindow(tk.Tk):
         t2.daemon = True
         t2.start()
         if glb_windows_env:
-            connect(new_data, 1, 9600, '5')
+            connect(self, new_data, 1, 9600, '6')
         else:
-            connect(new_data, 2, 9600, 'USB0')
+            connect(self, new_data, 2, 9600, 'USB0')
 
         font18 = "-family {Segoe UI} -size 18 -slant " \
                  "roman -underline 0 -overstrike 0"
@@ -1160,7 +1164,7 @@ class MainWindow(tk.Tk):
         self.newWindow.products_sold_total.place(relx=0.830,rely=0.87,relheight=0.10,relwidth=0.15)
         self.newWindow.products_sold_total.configure(font=font18,bg='dark red',fg='white')
 
-def connect(new_data, env, baud, port):
+def connect(self, new_data, env, baud, port):
     """The function initiates the Connection to the UART device with the Port and Buad fed through the Entry
     boxes in the application.
 
@@ -1176,19 +1180,19 @@ def connect(new_data, env, baud, port):
 
     try:
         if env == 2:
-                serial_object = serial.Serial(port='/dev/tty' + str(port), baudrate=baud)
+            serial_object = serial.Serial(port='/dev/tty' + str(port), baudrate=baud)
         elif env == 1:
             serial_object = serial.Serial('COM' + str(port), baud)
     except ValueError:
         print("Enter Baud and Port")
         return
     t1 = threading.Thread(target=get_data,
-                          args=(new_data,))
+                          args=(self, new_data,))
     t1.daemon = True
     t1.start()
 
 
-def get_data(new_data):
+def get_data(self, new_data):
     """This function serves the purpose of collecting data from the serial object and storing
     the filtered data into a global variable.
 
@@ -1209,10 +1213,10 @@ def get_data(new_data):
             else:
                 pass
         except NameError as err:
-            add_to_log("Get data", err)
+            add_to_log(self, "Get data", err)
             pass
         except TypeError as err:
-            add_to_log("Get data", err)
+            add_to_log(self, "Get data", err)
             pass
         except UnicodeDecodeError:
             pass
