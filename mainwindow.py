@@ -290,16 +290,19 @@ def get_product_based_on_barcod(self,prdct_barcode, salesObj):
             myCursor.execute(glb_SelectProductByBarcode,
                              (prdct_barcode,))
             rows = myCursor.fetchall()
-            for row in rows:
-                salesObj.salesID = glb_customer_no
-                salesObj.salesLineID = glb_sales_line_id
-                glb_sales_line_id = glb_sales_line_id + 1
-                salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
-                salesObj.productID = row[0]
-                salesObj.amount = 1
-                salesObj.Name = row[1]
-                salesObj.retailPrice = row[2]
-                salesObj.typeOfCollection = 0
+            if len(rows) > 0:
+                for row in rows:
+                    salesObj.salesID = glb_customer_no
+                    salesObj.salesLineID = glb_sales_line_id
+                    glb_sales_line_id = glb_sales_line_id + 1
+                    salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
+                    salesObj.productID = row[0]
+                    salesObj.amount = 1
+                    salesObj.Name = row[1]
+                    salesObj.retailPrice = row[2]
+                    salesObj.typeOfCollection = 0
+            else:
+                add_to_log(self, "get_product_based_on_barcod",prdct_barcode + " kayıt Buulunamadı")
         else:
             add_to_log(self, "get_product_based_on_barcod","Bağlantı Hatası")
     except Error as e:
