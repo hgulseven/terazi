@@ -10,6 +10,7 @@ from datetime import datetime
 import cursor
 import mysql.connector
 from mysql.connector import Error
+import ctypes  # An included library with Python install.
 
 #Connection data
 glb_host = "192.168.1.45"
@@ -64,6 +65,7 @@ def add_to_log(function, err):
     with open('log.txt', 'a') as the_file:
         currentDate = datetime.now()
         the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
+        ctypes.windll.user32.MessageBoxW(0, function+" "+format(err), "HATA ALINDI", 1)
 
 class Product(object):
     def __init__(self, productID=None, Name=None, price=None, teraziID=None):
