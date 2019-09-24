@@ -601,7 +601,7 @@ class MainWindow(tk.Tk):
                  "roman -underline 0 -overstrike 0"
         for child in frame.winfo_children():  # Clear frame contents whatever it is
             child.destroy()
-        row_size, col_size = 5, 2  # grid in the frame is 4 by 3
+        row_size, col_size = 6, 2  # grid in the frame is 4 by 3
         lower_cnt = page_count * row_size * col_size  # calculate lower bound in the list
         while lower_cnt > len(list):  # if lower bound is more than list size adjust it
             page_count = page_count - 1
