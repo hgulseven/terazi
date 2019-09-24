@@ -843,6 +843,7 @@ class MainWindow(tk.Tk):
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, "0")
         resp = requests.get("http://"+glb_webHost+"/api/DataRefresh")
+        self.btn_cleardara_clicked()
         self.new_customer_clicked()
         root.config(cursor="")
 
