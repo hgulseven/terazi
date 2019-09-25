@@ -405,11 +405,7 @@ def load_products(self, ID):
     except Error as e:
         add_to_log(self, "load_products", "DB Error :"+e.msg) #any error log it
 
-def connectdb():
-    global glb_cursor
-    global glb_host
-    if glb_cursor != 0:
-        glb_cursor.close()
+def WaitForSQL():
     db_connected = FALSE
     while not db_connected:
         try:
@@ -419,11 +415,10 @@ def connectdb():
                                             password='QAZwsx135') # pyodbc.connect(glb_connection_str)
             if conn.is_connected():
                 db_connected = TRUE
-                my_cursor=conn.cursor()
-                return(my_cursor)
         except Error as e:
             db_connected = FALSE
             time.sleep(2)
+    conn.close()
 
 
 class loadTables:
@@ -440,6 +435,7 @@ class loadTables:
         global glb_password
         global glb_SelectTerazi
 
+        WaitForSQL()
         load_products(self, 1)
         glb_scaleId = 0
         glb_sales_line_id = 1
@@ -1094,7 +1090,6 @@ class MainWindow(tk.Tk):
         filter_data = ''
         update_period = 60
         serial_object = None
-        loadTables()
         """Create frames"""
         self.master=top
         self.display_frame = tk.Frame(top)
@@ -1103,6 +1098,8 @@ class MainWindow(tk.Tk):
         self.paging_frame = tk.Frame(top)
         self.functions_frame = tk.Frame(top)
         self.message_box_frame = tk.Frame(top)
+        self.message_box_frame_def()
+        loadTables()
         """define screen orientation"""
         self.display_frame.grid(row=0, column=0, columnspan=2)
         self.products_sold_frame.grid(row=1, column=0, rowspan=2)
@@ -1117,7 +1114,6 @@ class MainWindow(tk.Tk):
         self.employee_frame_def()
         self.paging_frame_def()
         self.productssold_frame_def()
-        self.message_box_frame_def()
         new_data = threading.Event()
         t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
         t2.daemon = True
