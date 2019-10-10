@@ -19,24 +19,24 @@ glb_database = "order_and_sales_management"
 glb_user = "hakan"
 glb_password = "QAZwsx135"
 # queries
-glb_GetTeraziProducts = """Select  TeraziID, ProductModels.productID, productName, productRetailPrice from ProductModels left outer join TeraziScreenMapping on (TeraziScreenMapping.productID=ProductModels.productID) where TeraziID=%s order by screenSeqNo;"""
-glb_SelectTerazi = "Select  TeraziID, teraziName from TeraziTable;"
-glb_SelectEmployees = "Select personelID, persName,persSurname  from  EmployeesModels;"
-glb_SelectCounter ="""select counter from salesCounter where salesDate=%s;"""
-glb_UpdateCounter = """Update salesCounter set counter=%s where salesDate=%s;"""
-glb_InsertCounter = """Insert into salesCounter (salesDate, counter) values (%s,%s);"""
-glb_UpdateSales ="""update SalesModels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s;"""
-glb_SelectSalesLineExists="""select count(*) from SalesModels where salesID=%s and typeOfCollection=%s and salesLineID=%s and saleDate=%s;"""
-glb_UpdateSalesLine="""update SalesModels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s where personelID=%s and typeOfCollection=%s and salesID=%s and salesLineID=%s and saleDate=%s;"""
-glb_InsertSalesLine = """insert into SalesModels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection) values (%s,%s,%s,%s,%s,%s,%s,%s);"""
-glb_SelectSales = """select  saleDate, salesID,  salesLineID, personelID, SalesModels.productID, amount, productRetailPrice, productName, typeOfCollection from SalesModels left outer join ProductModels on (SalesModels.productID= ProductModels.productID) where salesId=%s and typeOfCollection=%s;"""
-glb_SelectProductByBarcode ="""Select productID, productName, productRetailPrice from ProductModels where productBarcodeID=%s;"""
-glb_SelectCustomers = "Select distinct salesID from SalesModels where  typeOfCollection = -1 order by salesID;"
-glb_SelectCustomersOnCashier = "Select  distinct salesID from SalesModels where  typeOfCollection = 0 order by salesID;"
+glb_GetTeraziProducts = """Select  TeraziID, productmodels.productID, productName, productRetailPrice from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"""
+glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
+glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels;"
+glb_SelectCounter ="""select counter from salescounter where salesDate=%s;"""
+glb_UpdateCounter = """Update salescounter set counter=%s where salesDate=%s;"""
+glb_InsertCounter = """Insert into salescounter (salesDate, counter) values (%s,%s);"""
+glb_UpdateSales ="""update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s;"""
+glb_SelectSalesLineExists="""select count(*) from salesmodels where salesID=%s and typeOfCollection=%s and salesLineID=%s and saleDate=%s;"""
+glb_UpdateSalesLine="""update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s where personelID=%s and typeOfCollection=%s and salesID=%s and salesLineID=%s and saleDate=%s;"""
+glb_InsertSalesLine = """insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection) values (%s,%s,%s,%s,%s,%s,%s,%s);"""
+glb_SelectSales = """select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s;"""
+glb_SelectProductByBarcode ="""Select productID, productName, productRetailPrice from productmodels where productBarcodeID=%s;"""
+glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 order by salesID;"
+glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  typeOfCollection = 0 order by salesID;"
 
 glb_windows_env = 0 # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
-glb_customer_no = 0  # customer no is got by using salesCounter table.
+glb_customer_no = 0  # customer no is got by using salescounter table.
 top = None
 glb_product_names = []  # products are loaded to memory based on rayon
 glb_reyons = []  # rayon combobox contents
@@ -69,7 +69,6 @@ def add_to_log(self, function, err):
     with open('log.txt', 'a') as the_file:
         currentDate = datetime.now()
         the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
-        self.message_box_text.insert(END,function+" "+format(err))
 
 class Product(object):
     def __init__(self, productID=None, Name=None, price=None, teraziID=None):
@@ -96,7 +95,7 @@ class Employee(object):
         self.Name = Name
 
 
-class SalesCounter(object):
+class salescounter(object):
     def __init__(self, salesDate=None, counter=None):
         self.salesDate = salesDate
         self.counter = 0
@@ -899,7 +898,7 @@ class MainWindow(tk.Tk):
         root.update()
         self.message_box_text.delete("1.0", END)
         glb_sales.clear()
-        salescounterobj = SalesCounter()
+        salescounterobj = salescounter()
         glb_customer_no = salescounterobj.get_counter()
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
