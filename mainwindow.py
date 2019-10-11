@@ -18,7 +18,7 @@ glb_webHost = "192.168.1.45"
 glb_database = "order_and_sales_management"
 glb_user = "hakan"
 glb_password = "QAZwsx135"
-glb_location = ""
+glb_locationid = ""
 # queries
 glb_GetTeraziProducts = """Select  TeraziID, productmodels.productID, productName, productRetailPrice from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"""
 glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
@@ -1264,9 +1264,8 @@ def getopts(argv):
 
 if __name__ == '__main__':
     from sys import argv  # example client code
-
     myargs = getopts(argv)
     if ("-location" in myargs.keys()):
-        glb_location = myargs["-location"]
+        glb_locationid = myargs["-location"]
         vp_start_gui()
 
