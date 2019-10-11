@@ -18,6 +18,7 @@ glb_webHost = "192.168.1.45"
 glb_database = "order_and_sales_management"
 glb_user = "hakan"
 glb_password = "QAZwsx135"
+glb_location = ""
 # queries
 glb_GetTeraziProducts = """Select  TeraziID, productmodels.productID, productName, productRetailPrice from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"""
 glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
@@ -28,7 +29,7 @@ glb_InsertCounter = """Insert into salescounter (salesDate, counter) values (%s,
 glb_UpdateSales ="""update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s;"""
 glb_SelectSalesLineExists="""select count(*) from salesmodels where salesID=%s and typeOfCollection=%s and salesLineID=%s and saleDate=%s;"""
 glb_UpdateSalesLine="""update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s where personelID=%s and typeOfCollection=%s and salesID=%s and salesLineID=%s and saleDate=%s;"""
-glb_InsertSalesLine = """insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection) values (%s,%s,%s,%s,%s,%s,%s,%s);"""
+glb_InsertSalesLine = """insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID) values (%s,%s,%s,%s,%s,%s,%s,%s,%s);"""
 glb_SelectSales = """select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s;"""
 glb_SelectProductByBarcode ="""Select productID, productName, productRetailPrice from productmodels where productBarcodeID=%s;"""
 glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 order by salesID;"
@@ -195,6 +196,7 @@ def sales_save(self, typeOfCollection):
     global glb_SelectSalesLineExists
     global glb_UpdateSalesLine
     global glb_InsertSalesLine
+    global glb_locationid
 
     try:
         conn = mysql.connector.connect(host=glb_host,
@@ -218,7 +220,7 @@ def sales_save(self, typeOfCollection):
                     paidAmount=0.0
                     myCursor.execute(glb_InsertSalesLine,
                                      (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID,
-                                      salesObj.personelID, salesObj.productID,salesObj.amount,paidAmount,typeOfCollection))
+                                      salesObj.personelID, salesObj.productID,salesObj.amount,paidAmount,typeOfCollection,glb_locationid))
             conn.commit()
             myCursor.close()
             conn.close()
@@ -1250,6 +1252,21 @@ def update_gui(scale_display, new_data):
             mydata = mydata.rjust(13)
             scale_display.insert(END, mydata)
 
+def getopts(argv):
+   opts = {}
+   while argv:
+      if argv[0][0] == '-': # find "-name value" pairs
+         opts[argv[0]] = argv[1] # dict key is "-name" arg
+         argv = argv[2:]
+      else:
+         argv = argv[1:]
+   return opts
 
 if __name__ == '__main__':
-    vp_start_gui()
+    from sys import argv  # example client code
+
+    myargs = getopts(argv)
+    if (myargs.len > 0):
+        glb_location = myargs["-location"]
+        vp_start_gui()
+
