@@ -1266,7 +1266,7 @@ if __name__ == '__main__':
     from sys import argv  # example client code
 
     myargs = getopts(argv)
-    if (myargs.len > 0):
+    if ("-location" in myargs.keys()):
         glb_location = myargs["-location"]
         vp_start_gui()
 
