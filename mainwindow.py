@@ -63,11 +63,11 @@ glb_active_customers_page_count = 0  # paging of active customers buttons displa
 glb_callback_customers_page_count = 0  # paging of callback customers buttons displayed in product frame
 
 def add_to_log(self, function, err):
-    if (os.path.isfile("log.txt")):
-        fsize = os.stat('log.txt').st_size
+    if (os.path.isfile("/home/pi/PycharmProjects/terazi/log.txt")):
+        fsize = os.stat('/home/pi/PycharmProjects/terazi/log.txt').st_size
         if fsize > 50000:
-            os.rename('log.txt','log1.txt')
-    with open('log.txt', 'a') as the_file:
+            os.rename('/home/pi/PycharmProjects/terazi/log.txt','/home/pi/PycharmProjects/terazi/log1.txt')
+    with open('/home/pi/PycharmProjects/terazi/log.txt', 'a') as the_file:
         currentDate = datetime.now()
         the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
 
@@ -849,7 +849,10 @@ class MainWindow(tk.Tk):
         glb_sales_line_id = 1
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, "0")
-        resp = requests.get("http://"+glb_webHost+"/api/DataRefresh")
+        try:
+            resp = requests.get("http://"+glb_webHost+"/api/DataRefresh")
+        except Error as e:
+            add_to_log(self, "sendToCahsier","SignalRErr :"+e.msg)
         self.btn_cleardara_clicked()
         self.new_customer_clicked()
         root.config(cursor="")
@@ -1191,8 +1194,9 @@ def connect(self, new_data, env, baud, port):
             serial_object = serial.Serial(port='/dev/tty' + str(port), baudrate=baud)
         elif env == 1:
             serial_object = serial.Serial('COM' + str(port), baud)
-    except ValueError:
-        print("Enter Baud and Port")
+    except serial.SerialException as msg:
+        add_to_log(self, "Connect", "Seri Port Hatası"+" "+msg)
+
         return
     t1 = threading.Thread(target=get_data,
                           args=(self, new_data,))
