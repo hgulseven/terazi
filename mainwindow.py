@@ -578,10 +578,10 @@ class MainWindow(tk.Tk):
         self.scale_type = tk.Text(self.display_frame, height=1, width=3, font=("Arial Bold", 25),
                                   bg='dark green', fg="white")
         self.prdct_barcode = tk.Text(self.display_frame, height=1, width=2, font=('Arial Bold', 25))
-        self.employee_text = tk.Text(self.display_frame, height=1, width=30, font=("Arial Bold", 25))
+        self.employee_text = tk.Text(self.display_frame, height=1, width=20, font=("Arial Bold", 25))
         self.scale_type.insert(END, "Kg")
         self.customer_no.insert(END, "0")
-        self.employee_text.insert(END,"Personel Seçilmemiş")
+        self.employee_text.insert(END,"")
         reyon_names = []
         for index, reyonObj in enumerate(glb_reyons):
             reyon_names.append(reyonObj.ReyonName)
@@ -595,7 +595,7 @@ class MainWindow(tk.Tk):
         self.customer_no.grid(row=0, column=2)
         self.scale_display.grid(row=0, column=3)
         self.scale_type.grid(row=0, column=4)
-        self.employee_text.grid(row=0,column=6)
+        self.employee_text.grid(row=0,column=5)
         self.prdct_barcode.focus_set()
         self.prdct_barcode.bind('<Key-Return>', self.read_barcode)
 
