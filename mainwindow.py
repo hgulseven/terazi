@@ -1093,7 +1093,7 @@ class MainWindow(tk.Tk):
             self.message_box_text.insert(END, "Yeni Müşteri Seçilmeden Ürün Seçimi Yapılamaz")
 
     def __init__(self, top=None):
-        w, h = top.winfo_screenwidth(), root.winfo_screenheight()
+        w, h = top.winfo_screenwidth()/2, root.winfo_screenheight()
         top.geometry("%dx%d+0+0" % (w, h))
         # top.geometry("800x480+1571+152")
         top.title("Terazi Ara Yüzü")
@@ -1202,7 +1202,7 @@ def connect(self, new_data, env, baud, port):
         elif env == 1:
             serial_object = serial.Serial('COM' + str(port), baud)
     except serial.SerialException as msg:
-        add_to_log(self, "Connect", "Seri Port Hatası"+" "+msg)
+        add_to_log(self, "Connect", "Seri Port Hatası")
 
         return
     t1 = threading.Thread(target=get_data,
