@@ -26,7 +26,7 @@ glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesm
 glb_SelectCounter ="""select counter from salescounter where salesDate=%s;"""
 glb_UpdateCounter = """Update salescounter set counter=%s where salesDate=%s;"""
 glb_InsertCounter = """Insert into salescounter (salesDate, counter) values (%s,%s);"""
-glb_UpdateSales ="""update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s;"""
+glb_UpdateSales ="""update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s;"""
 glb_SelectSalesLineExists="""select count(*) from salesmodels where salesID=%s and typeOfCollection=%s and salesLineID=%s and saleDate=%s;"""
 glb_UpdateSalesLine="""update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s where personelID=%s and typeOfCollection=%s and salesID=%s and salesLineID=%s and saleDate=%s;"""
 glb_InsertSalesLine = """insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID) values (%s,%s,%s,%s,%s,%s,%s,%s,%s);"""
@@ -175,8 +175,10 @@ def sales_update(self, salesID, srcTypeOfCollection, destTypeOfCollection):
         if conn.is_connected():
             myCursor = conn.cursor()
             for salesObj in glb_sales:
+                my_date = datetime.now()
+                saleTime = my_date.strftime('%Y-%m-%d %H:%M:%S.%f')
                 myCursor.execute(glb_UpdateSales,(salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,salesObj.productID,
-                                 salesObj.amount, destTypeOfCollection, salesID, salesObj.salesLineID, srcTypeOfCollection,
+                                 salesObj.amount, destTypeOfCollection, saleTime, salesID, salesObj.salesLineID, srcTypeOfCollection,
                                  salesObj.saleDate))
             conn.commit()
             myCursor.close()
@@ -576,8 +578,10 @@ class MainWindow(tk.Tk):
         self.scale_type = tk.Text(self.display_frame, height=1, width=3, font=("Arial Bold", 25),
                                   bg='dark green', fg="white")
         self.prdct_barcode = tk.Text(self.display_frame, height=1, width=2, font=('Arial Bold', 25))
+        self.employee_text = tk.Text(self.display_frame, height=1, width=30, font=("Arial Bold", 25))
         self.scale_type.insert(END, "Kg")
         self.customer_no.insert(END, "0")
+        self.employee_text.insert(END,"Personel Seçilmemiş")
         reyon_names = []
         for index, reyonObj in enumerate(glb_reyons):
             reyon_names.append(reyonObj.ReyonName)
@@ -591,6 +595,7 @@ class MainWindow(tk.Tk):
         self.customer_no.grid(row=0, column=2)
         self.scale_display.grid(row=0, column=3)
         self.scale_type.grid(row=0, column=4)
+        self.employee_text.grid(row=0,column=6)
         self.prdct_barcode.focus_set()
         self.prdct_barcode.bind('<Key-Return>', self.read_barcode)
 
@@ -1029,6 +1034,9 @@ class MainWindow(tk.Tk):
             self.update_products_sold()
             self.customer_no.delete('1.0', END)
             self.customer_no.insert(END, glb_customer_no)
+            self.employee_text.delete('1.0', END)
+            self.employee_text.tag_configure('right',justify='right')
+            self.employee_text.insert(END,glb_employees_selected,'right')
             self.prdct_barcode.focus_set()
         else:
             self.message_box_text.insert(END, "Reyon Seçimini Yapmadan Personel Seçimi Yapılamaz")
@@ -1085,7 +1093,7 @@ class MainWindow(tk.Tk):
             self.message_box_text.insert(END, "Yeni Müşteri Seçilmeden Ürün Seçimi Yapılamaz")
 
     def __init__(self, top=None):
-        w, h = top.winfo_screenwidth()/2, root.winfo_screenheight()
+        w, h = top.winfo_screenwidth(), root.winfo_screenheight()
         top.geometry("%dx%d+0+0" % (w, h))
         # top.geometry("800x480+1571+152")
         top.title("Terazi Ara Yüzü")
@@ -1123,10 +1131,9 @@ class MainWindow(tk.Tk):
         t2.daemon = True
         t2.start()
         if glb_windows_env:
-            connect(self, new_data, 1, 9600, '6')
+           connect(self, new_data, 1, 9600, '6')
         else:
-            connect(self, new_data, 2, 9600, 'USB0')
-
+           connect(self, new_data, 2, 9600, 'USB0')
         font18 = "-family {Segoe UI} -size 18 -slant " \
                  "roman -underline 0 -overstrike 0"
         font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
