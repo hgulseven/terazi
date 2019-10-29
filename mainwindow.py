@@ -1140,10 +1140,10 @@ class MainWindow(tk.Tk):
         t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
         t2.daemon = True
         t2.start()
-#        if glb_windows_env:
-#           connect(self, new_data, 1, 9600, '6')
-#        else:
-#           connect(self, new_data, 2, 9600, 'USB0')
+        if glb_windows_env:
+           connect(self, new_data, 1, 9600, '6')
+        else:
+           connect(self, new_data, 2, 9600, 'USB0')
         font18 = "-family {Segoe UI} -size 18 -slant " \
                  "roman -underline 0 -overstrike 0"
         font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
