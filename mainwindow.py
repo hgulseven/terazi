@@ -674,13 +674,20 @@ class MainWindow(tk.Tk):
                                            highlightbackground="#d9d9d9")
         self.products_sold_frame.configure(highlightcolor="black", width=155)
         self.entry_products = tk.Text(self.products_sold_frame)
-        self.entry_products.place(relx=0.010, rely=0.02, relheight=0.84, relwidth=0.750)
+        self.entry_products.place(relx=0.010, rely=0.02, relheight=0.84, relwidth=0.650)
         self.entry_products.configure(font=font10)
         self.entry_products.configure(takefocus="")
+
+        self.entry_amount_sold=tk.Text(self.products_sold_frame);
+        self.entry_amount_sold.tag_configure("right",justify=RIGHT)
+        self.entry_amount_sold.tag_add("right",1.0,"end")
+        self.entry_amount_sold.place(relx=0.650, rely=0.02, relheight=0.84, relwidth=0.160)
+        self.entry_amount_sold.configure(font=font10, takefocus="")
+
         self.entry_calculatedtotal = tk.Text(self.products_sold_frame)
         self.entry_calculatedtotal.tag_configure("right",justify=RIGHT)
         self.entry_calculatedtotal.tag_add("right",1.0,"end")
-        self.entry_calculatedtotal.place(relx=0.750, rely=0.02, relheight=0.84, relwidth=0.240)
+        self.entry_calculatedtotal.place(relx=0.810, rely=0.02, relheight=0.84, relwidth=0.160)
         self.entry_calculatedtotal.configure(font=font10, takefocus="")
         self.label_sum = tk.Label(self.products_sold_frame)
         self.label_sum.place(relx=0.040, rely=0.88, relheight=0.10, relwidth=0.300)
@@ -692,7 +699,7 @@ class MainWindow(tk.Tk):
         self.entry_sum = tk.Text(self.products_sold_frame, height=1, width=80, font=font12)
         self.entry_sum.tag_configure("right",justify=RIGHT)
         self.entry_sum.tag_add("right",1.0,"end")
-        self.entry_sum.place(relx=0.750, rely=0.88, relheight=0.10, relwidth=0.250)
+        self.entry_sum.place(relx=0.810, rely=0.88, relheight=0.10, relwidth=0.160)
 
     def functions_frame_def(self):
         global top
@@ -1044,10 +1051,13 @@ class MainWindow(tk.Tk):
 
     def update_products_sold(self):
         self.entry_products.delete("1.0", END)
+        self.entry_amount_sold.delete("1.0",END)
         self.entry_calculatedtotal.delete("1.0", END)
         sum_calculated_price = 0
         for salesObj in glb_sales:
             self.entry_products.insert(END, " "+salesObj.Name + "\n")
+            strAmount="{:.3f}\n".format(salesObj.amount).rjust(6, ' ')
+            self.entry_amount_sold.insert(END,strAmount,"right")
             calculated_price = float(salesObj.amount * float(salesObj.retailPrice))
             sum_calculated_price = sum_calculated_price + calculated_price
             myData = "{:.2f}\n".format(calculated_price).rjust(8, ' ')
@@ -1130,10 +1140,10 @@ class MainWindow(tk.Tk):
         t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
         t2.daemon = True
         t2.start()
-        if glb_windows_env:
-           connect(self, new_data, 1, 9600, '6')
-        else:
-           connect(self, new_data, 2, 9600, 'USB0')
+#        if glb_windows_env:
+#           connect(self, new_data, 1, 9600, '6')
+#        else:
+#           connect(self, new_data, 2, 9600, 'USB0')
         font18 = "-family {Segoe UI} -size 18 -slant " \
                  "roman -underline 0 -overstrike 0"
         font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
