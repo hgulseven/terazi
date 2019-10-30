@@ -699,7 +699,7 @@ class MainWindow(tk.Tk):
         self.entry_sum = tk.Text(self.products_sold_frame, height=1, width=80, font=font12)
         self.entry_sum.tag_configure("right",justify=RIGHT)
         self.entry_sum.tag_add("right",1.0,"end")
-        self.entry_sum.place(relx=0.810, rely=0.88, relheight=0.10, relwidth=0.160)
+        self.entry_sum.place(relx=0.810, rely=0.88, relheight=0.10, relwidth=0.170)
 
     def functions_frame_def(self):
         global top
@@ -977,9 +977,11 @@ class MainWindow(tk.Tk):
         root.config(cursor="")
 
     def btn_clearlasttransaction_clicked(self):
+        global glb_sales_line_id
         root.config(cursor="watch")
         root.update()
         glb_sales.pop(-1)
+        glb_sales_line_id = glb_sales_line_id -1
         self.update_products_sold()
         self.update_products_sold_for_customer()
         root.config(cursor="")
