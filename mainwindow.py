@@ -687,7 +687,7 @@ class MainWindow(tk.Tk):
         self.entry_calculatedtotal = tk.Text(self.products_sold_frame)
         self.entry_calculatedtotal.tag_configure("right",justify=RIGHT)
         self.entry_calculatedtotal.tag_add("right",1.0,"end")
-        self.entry_calculatedtotal.place(relx=0.810, rely=0.02, relheight=0.84, relwidth=0.160)
+        self.entry_calculatedtotal.place(relx=0.810, rely=0.02, relheight=0.84, relwidth=0.170)
         self.entry_calculatedtotal.configure(font=font10, takefocus="")
         self.label_sum = tk.Label(self.products_sold_frame)
         self.label_sum.place(relx=0.040, rely=0.88, relheight=0.10, relwidth=0.300)
