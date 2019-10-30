@@ -687,7 +687,7 @@ class MainWindow(tk.Tk):
         self.entry_calculatedtotal = tk.Text(self.products_sold_frame)
         self.entry_calculatedtotal.tag_configure("right",justify=RIGHT)
         self.entry_calculatedtotal.tag_add("right",1.0,"end")
-        self.entry_calculatedtotal.place(relx=0.810, rely=0.02, relheight=0.84, relwidth=0.160)
+        self.entry_calculatedtotal.place(relx=0.810, rely=0.02, relheight=0.84, relwidth=0.170)
         self.entry_calculatedtotal.configure(font=font10, takefocus="")
         self.label_sum = tk.Label(self.products_sold_frame)
         self.label_sum.place(relx=0.040, rely=0.88, relheight=0.10, relwidth=0.300)
@@ -699,7 +699,7 @@ class MainWindow(tk.Tk):
         self.entry_sum = tk.Text(self.products_sold_frame, height=1, width=80, font=font12)
         self.entry_sum.tag_configure("right",justify=RIGHT)
         self.entry_sum.tag_add("right",1.0,"end")
-        self.entry_sum.place(relx=0.810, rely=0.88, relheight=0.10, relwidth=0.160)
+        self.entry_sum.place(relx=0.810, rely=0.88, relheight=0.10, relwidth=0.170)
 
     def functions_frame_def(self):
         global top
@@ -1103,7 +1103,7 @@ class MainWindow(tk.Tk):
             self.message_box_text.insert(END, "Yeni Müşteri Seçilmeden Ürün Seçimi Yapılamaz")
 
     def __init__(self, top=None):
-        w, h = top.winfo_screenwidth()/2, root.winfo_screenheight()
+        w, h = top.winfo_screenwidth(), root.winfo_screenheight()
         top.geometry("%dx%d+0+0" % (w, h))
         # top.geometry("800x480+1571+152")
         top.title("Terazi Ara Yüzü")
