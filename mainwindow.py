@@ -20,21 +20,21 @@ glb_user = "hakan"
 glb_password = "QAZwsx135"
 glb_locationid = ""
 # queries
-glb_GetTeraziProducts = """Select  TeraziID, productmodels.productID, productName, productRetailPrice from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"""
+glb_GetTeraziProducts = "Select  TeraziID, productmodels.productID, productName, productRetailPrice from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"
 glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
 glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels;"
-glb_SelectCounter ="""select counter from salescounter where salesDate=%s;"""
-glb_UpdateCounter = """Update salescounter set counter=%s where salesDate=%s;"""
-glb_InsertCounter = """Insert into salescounter (salesDate, counter) values (%s,%s);"""
-glb_UpdateSales ="""update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s;"""
-glb_SelectSalesLineExists="""select count(*) from salesmodels where salesID=%s and typeOfCollection=%s and salesLineID=%s and saleDate=%s;"""
-glb_UpdateSalesLine="""update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s where personelID=%s and typeOfCollection=%s and salesID=%s and salesLineID=%s and saleDate=%s;"""
-glb_InsertSalesLine = """insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID) values (%s,%s,%s,%s,%s,%s,%s,%s,%s);"""
-glb_SelectSales = """select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s;"""
-glb_SelectProductByBarcode ="""Select productID, productName, productRetailPrice from productmodels where productBarcodeID=%s;"""
+glb_SelectCounter ="select counter from salescounter where salesDate=%s;"
+glb_UpdateCounter = "Update salescounter set counter=%s where salesDate=%s;"
+glb_InsertCounter = "Insert into salescounter (salesDate, counter) values (%s,%s);"
+glb_UpdateSales ="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s;"
+glb_SelectSalesLineExists="select count(*) from salesmodels where salesID=%s and salesLineID=%s and saleDate=%s;"
+glb_UpdateSalesLine="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s;"
+glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID) values (%s,%s,%s,%s,%s,%s,%s,%s,%s);"
+glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s;"
+glb_SelectProductByBarcode ="Select productID, productName, productRetailPrice from productmodels where productBarcodeID=%s;"
 glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 order by salesID;"
 glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  typeOfCollection = 0 order by salesID;"
-
+glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s;"
 glb_windows_env = 0 # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
@@ -186,8 +186,27 @@ def sales_update(self, salesID, srcTypeOfCollection, destTypeOfCollection):
         else:
             add_to_log(self, "sales_Update","Bağlantı Hatası")
     except Error as e:
-         add_to_log(self, "sales_update", "DbError :"+e.msg);
+         add_to_log(self, "sales_update", "DbError :"+e.msg)
 
+
+def sales_hard_delete(self, salesID):
+    global glb_salesDelete
+
+    try:
+        conn = mysql.connector.connect(host=glb_host,
+                                       database=glb_database,
+                                       user=glb_user,
+                                       password=glb_password)  # pyodbc.connect(glb_connection_str)
+        if conn.is_connected():
+            myCursor = conn.cursor()
+            my_date = datetime.now()
+            saleDate = my_date.strftime('%Y-%m-%d')
+            myCursor.execute(glb_salesDelete,(saleDate,salesID))
+            conn.commit()
+        else:
+            add_to_log(self, "sales_save","Bağlantı Hatası")
+    except Error as e:
+        add_to_log(self, "sales_save","DBHatası :"+e.msg)
 
 
 def sales_save(self, typeOfCollection):
@@ -208,15 +227,14 @@ def sales_save(self, typeOfCollection):
         if conn.is_connected():
             myCursor = conn.cursor()
             for salesObj in glb_sales:
-                expectedTypeOfCollection=-1
                 myCursor.execute(glb_SelectSalesLineExists,
-                                 (salesObj.salesID,expectedTypeOfCollection,salesObj.salesLineID, salesObj.saleDate))
-                number_of_rows = myCursor.fetchone()[0]
+                                 (salesObj.salesID,salesObj.salesLineID, salesObj.saleDate))
+                number_of_rows = myCursor.fetchall()[0][0]
                 if number_of_rows > 0:
                     myCursor.execute(glb_UpdateSalesLine,
                                      (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,
                                      salesObj.productID,salesObj.amount, typeOfCollection, salesObj.personelID,
-                                     salesObj.typeOfCollection, salesObj.salesID,salesObj.salesLineID,salesObj.saleDate))
+                                     salesObj.salesID,salesObj.salesLineID,salesObj.saleDate))
                     conn.commit()
                 else:
                     paidAmount=0.0
@@ -851,6 +869,7 @@ class MainWindow(tk.Tk):
         global glb_sales_line_id
         root.config(cursor="watch")
         root.update()
+        sales_hard_delete(self,glb_customer_no)
         sales_save(self,-1)
         sales_update(self,glb_customer_no, -1,
                      0)  # update which has value -1 (actively served customer) to 0 (sent to cashier)
@@ -930,6 +949,7 @@ class MainWindow(tk.Tk):
         global glb_customer_no
         root.config(cursor="watch")
         root.update()
+        sales_hard_delete(self, glb_customer_no)
         sales_save(self,-2)
         self.message_box_text.delete("1.0", END)
         glb_sales.clear()
@@ -943,8 +963,11 @@ class MainWindow(tk.Tk):
 
     def btn_savesale_clicked(self):
         global glb_sales_line_id
+        global glb_customer_no
+
         root.config(cursor="watch")
         root.update()
+        sales_hard_delete(self, glb_customer_no)
         sales_save(self,-1)
 #        self.message_box_text.delete("1.0", END)
         glb_sales.clear()
