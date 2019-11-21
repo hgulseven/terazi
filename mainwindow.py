@@ -629,6 +629,7 @@ class MainWindow(tk.Tk):
         if (get_product_based_on_barcod(self,textdata, salesObj)):
             glb_sales.append(salesObj)
         self.update_products_sold()
+        self.update_products_sold_for_customer()
         root.config(cursor="")
 
 
