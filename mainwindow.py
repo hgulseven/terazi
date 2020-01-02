@@ -11,6 +11,7 @@ import cursor
 import mysql.connector
 from mysql.connector import Error
 import os
+from tkinter import messagebox
 
 #Connection data
 glb_host = "192.168.1.45"
@@ -63,13 +64,18 @@ glb_active_customers_page_count = 0  # paging of active customers buttons displa
 glb_callback_customers_page_count = 0  # paging of callback customers buttons displayed in product frame
 
 def add_to_log(self, function, err):
-    if (os.path.isfile("/home/pi/PycharmProjects/terazi/log.txt")):
-        fsize = os.stat('/home/pi/PycharmProjects/terazi/log.txt').st_size
+    global glb_windows_env
+    if glb_windows_env == 1:
+        logPath="c:\\users\\hakan\\PycharmProjects\\terazi"
+    else:
+        logPath="/home/pi/PycharmProjects/terazi/"
+    if (os.path.isfile(logPath+'log.txt')):
+        fsize = os.stat(logPath+'log.txt').st_size
         if fsize > 50000:
-            os.rename('/home/pi/PycharmProjects/terazi/log.txt','/home/pi/PycharmProjects/terazi/log1.txt')
-    with open('/home/pi/PycharmProjects/terazi/log.txt', 'a') as the_file:
-        currentDate = datetime.now()
-        the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
+           os.rename(logPath+'log.txt',logPath+'log1.txt')
+           with open(logPath+'log.txt', 'a') as the_file:
+                currentDate = datetime.now()
+                the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
 
 class Product(object):
     def __init__(self, productID=None, Name=None, price=None, teraziID=None):
@@ -94,7 +100,6 @@ class Employee(object):
     def __init__(self, personelID=None, Name=None):
         self.personelID = personelID
         self.Name = Name
-
 
 class salescounter(object):
     def __init__(self, salesDate=None, counter=None):
@@ -437,6 +442,7 @@ def WaitForSQL():
             if conn.is_connected():
                 db_connected = TRUE
         except Error as e:
+            messagebox.showinfo("Hata Mesajı", "Sunucu ile bağlantı Kurulamadı")
             db_connected = FALSE
             time.sleep(2)
     conn.close()
@@ -1238,6 +1244,7 @@ def connect(self, new_data, env, baud, port):
         elif env == 1:
             serial_object = serial.Serial('COM' + str(port), baud)
     except serial.SerialException as msg:
+        messagebox.showinfo("Hata Mesajı", "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
         add_to_log(self, "Connect", "Seri Port Hatası")
 
         return
