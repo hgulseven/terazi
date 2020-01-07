@@ -24,17 +24,17 @@ glb_locationid = ""
 glb_GetTeraziProducts = "Select  TeraziID, productmodels.productID, productName, productRetailPrice from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"
 glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
 glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels;"
-glb_SelectCounter ="select counter from salescounter where salesDate=%s;"
-glb_UpdateCounter = "Update salescounter set counter=%s where salesDate=%s;"
-glb_InsertCounter = "Insert into salescounter (salesDate, counter) values (%s,%s);"
+glb_SelectCounter ="select counter from salescounter where salesDate=%s and locationID=%s;"
+glb_UpdateCounter = "Update salescounter set counter=%s where salesDate=%s and locationID=%s;"
+glb_InsertCounter = "Insert into salescounter (salesDate, counter,locationID) values (%s,%s,%s);"
 glb_UpdateSales ="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s;"
 glb_SelectSalesLineExists="select count(*) from salesmodels where salesID=%s and salesLineID=%s and saleDate=%s;"
 glb_UpdateSalesLine="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s;"
 glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID) values (%s,%s,%s,%s,%s,%s,%s,%s,%s);"
 glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s;"
 glb_SelectProductByBarcode ="Select productID, productName, productRetailPrice from productmodels where productBarcodeID=%s;"
-glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 order by salesID;"
-glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  typeOfCollection = 0 order by salesID;"
+glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 and locationID=%s order by salesID;"
+glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  typeOfCollection = 0 and locationID=%s order by salesID;"
 glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s;"
 glb_windows_env = 0 # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
@@ -114,6 +114,7 @@ class salescounter(object):
         global glb_SelectCounter
         global glb_UpdateCounter
         global glb_InsertCounter
+        global glb_locationid
 
         try:
             conn = mysql.connector.connect(host=glb_host,
@@ -123,17 +124,17 @@ class salescounter(object):
             if conn.is_connected():
                 myCursor = conn.cursor()
                 my_date = datetime.now()
-                myCursor.execute(glb_SelectCounter, (my_date.strftime('%Y-%m-%d'),))
+                myCursor.execute(glb_SelectCounter, (my_date.strftime('%Y-%m-%d'),glb_locationid,))
                 rows = myCursor.fetchall()
                 number_of_rows = 0
                 for row in rows:
                     number_of_rows = number_of_rows + 1
                     self.counter = row[0] + 1
                 if number_of_rows > 0:
-                   myCursor.execute(glb_UpdateCounter,(self.counter,my_date.strftime('%Y-%m-%d'),))
+                   myCursor.execute(glb_UpdateCounter,(self.counter,my_date.strftime('%Y-%m-%d'),glb_locationid,))
                 else:
                     self.counter = 1
-                    myCursor.execute(glb_InsertCounter,(my_date.strftime('%Y-%m-%d'),self.counter,))
+                    myCursor.execute(glb_InsertCounter,(my_date.strftime('%Y-%m-%d'),self.counter,glb_locationid,))
                 conn.commit()
                 myCursor.close()
                 conn.close()
@@ -348,6 +349,7 @@ def get_served_customers(self):
 
     global glb_password
     global glb_SelectCustomers
+    global glb_locationid
 
     try:
         glb_active_served_customers.clear()
@@ -357,7 +359,7 @@ def get_served_customers(self):
                                        password=glb_password)  # pyodbc.connect(glb_connection_str)
         if conn.is_connected():
             myCursor = conn.cursor()
-            myCursor.execute(glb_SelectCustomers)
+            myCursor.execute(glb_SelectCustomers, (glb_locationid,))
             rows = myCursor.fetchall()
             for row in rows:
                 customer_obj = Customer()
@@ -378,6 +380,7 @@ def get_customers_on_cashier(self):
     global glb_user
     global glb_password
     global glb_SelectCustomers
+    global glb_locationid
 
     try:
         glb_customers_on_cashier.clear()
@@ -387,7 +390,7 @@ def get_customers_on_cashier(self):
                                        password=glb_password)  # pyodbc.connect(glb_connection_str)
         if conn.is_connected():
             myCursor = conn.cursor()
-            myCursor.execute(glb_SelectCustomersOnCashier)
+            myCursor.execute(glb_SelectCustomersOnCashier, (glb_locationid,))
             rows = myCursor.fetchall()
             for row in rows:
                 customer_obj = Customer()
