@@ -73,9 +73,9 @@ def add_to_log(self, function, err):
         fsize = os.stat(logPath+'log.txt').st_size
         if fsize > 50000:
            os.rename(logPath+'log.txt',logPath+'log1.txt')
-           with open(logPath+'log.txt', 'a') as the_file:
-                currentDate = datetime.now()
-                the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
+        with open(logPath+'log.txt', 'a') as the_file:
+               currentDate = datetime.now()
+               the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
 
 class Product(object):
     def __init__(self, productID=None, Name=None, price=None, teraziID=None):
@@ -1280,6 +1280,7 @@ def get_data(self, new_data):
                 if (serial_data[0:1] == '+') and (filter_data != serial_data[4:serial_data.index("kg")]):
                     filter_data = serial_data[4:serial_data.index("kg")]
                     new_data.set()
+                    add_to_log(self, "SeriFilter", "#" + filter_data + "#")
                     print(filter_data)
                 else:
                     pass
