@@ -36,7 +36,7 @@ glb_SelectProductByBarcode ="Select productID, productName, productRetailPrice f
 glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 and locationID=%s order by salesID;"
 glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  typeOfCollection = 0 and locationID=%s order by salesID;"
 glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
-glb_windows_env = 1 # 1 Windows 0 Linux
+glb_windows_env = 0 # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
 top = None
@@ -73,9 +73,9 @@ def add_to_log(self, function, err):
         fsize = os.stat(logPath+'log.txt').st_size
         if fsize > 50000:
            os.rename(logPath+'log.txt',logPath+'log1.txt')
-           with open(logPath+'log.txt', 'a') as the_file:
-                currentDate = datetime.now()
-                the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
+        with open(logPath+'log.txt', 'a') as the_file:
+               currentDate = datetime.now()
+               the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
 
 class Product(object):
     def __init__(self, productID=None, Name=None, price=None, teraziID=None):
@@ -1174,16 +1174,16 @@ class MainWindow(tk.Tk):
         self.employee_frame_def()
         self.paging_frame_def()
         self.productssold_frame_def()
-        filter_data="1.0"
-#        new_data = threading.Event()
-#        t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
-#        t2.daemon = True
-#        t2.start()
+        filter_data="0.000"
+        new_data = threading.Event()
+        t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
+        t2.daemon = True
+        t2.start()
 
-#        if glb_windows_env:
-#           connect(self, new_data, 1, 9600, '6')
-#        else:
-#           connect(self, new_data, 2, 9600, 'USB0')
+        if glb_windows_env:
+           connect(self, new_data, 1, 9600, '6')
+        else:
+           connect(self, new_data, 2, 9600, 'USB0')
         font18 = "-family {Segoe UI} -size 18 -slant " \
                  "roman -underline 0 -overstrike 0"
         font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
@@ -1274,13 +1274,18 @@ def get_data(self, new_data):
     while (1):
         try:
             serial_data = str(serial_object.readline(), 'utf-8')
-            if (len(serial_data > 3)):
+            add_to_log(self, "Seridata", "#" + filter_data + "#")
+            if (len(serial_data) > 3):
                 serial_data = serial_data.rstrip('\r')
                 serial_data = serial_data.rstrip('\n')
-                if (serial_data[0:1] == '+') and (filter_data != serial_data[4:serial_data.index("kg")]):
-                    filter_data = serial_data[4:serial_data.index("kg")]
-                    new_data.set()
-                    print(filter_data)
+                if (serial_data[0:1] == '+') and (serial_data.find("kg",1,len(serial_data))):
+                    if (filter_data != serial_data[4:serial_data.index("kg")]):
+                        filter_data = serial_data[4:serial_data.index("kg")]
+                        new_data.set()
+                        add_to_log(self, "SeriFilter", "#" + filter_data + "#")
+                        print(filter_data)
+                    else:
+                        pass
                 else:
                     pass
             else:
