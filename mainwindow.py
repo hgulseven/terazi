@@ -1274,7 +1274,7 @@ def get_data(self, new_data):
     while (1):
         try:
             serial_data = str(serial_object.readline(), 'utf-8')
-            add_to_log(self, "Seridata", "#" + filter_data + "#")
+            add_to_log(self, "Seridata", "#" + serial_data + "#")
             if (len(serial_data) > 3):
                 serial_data = serial_data.rstrip('\r')
                 serial_data = serial_data.rstrip('\n')
