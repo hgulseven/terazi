@@ -27,11 +27,11 @@ glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesm
 glb_SelectCounter ="select counter from salescounter where salesDate=%s and locationID=%s;"
 glb_UpdateCounter = "Update salescounter set counter=%s where salesDate=%s and locationID=%s;"
 glb_InsertCounter = "Insert into salescounter (salesDate, counter,locationID) values (%s,%s,%s);"
-glb_UpdateSales ="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s;"
-glb_SelectSalesLineExists="select count(*) from salesmodels where salesID=%s and salesLineID=%s and saleDate=%s;"
-glb_UpdateSalesLine="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s;"
+glb_UpdateSales ="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s, locationID=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
+glb_SelectSalesLineExists="select count(*) from salesmodels where salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
+glb_UpdateSalesLine="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s,locationID=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
 glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID) values (%s,%s,%s,%s,%s,%s,%s,%s,%s);"
-glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s;"
+glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s and locationID=%s;"
 glb_SelectProductByBarcode ="Select productID, productName, productRetailPrice from productmodels where productBarcodeID=%s;"
 glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 and locationID=%s order by salesID;"
 glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  typeOfCollection = 0 and locationID=%s order by salesID;"
@@ -184,8 +184,8 @@ def sales_update(self, salesID, srcTypeOfCollection, destTypeOfCollection):
                 my_date = datetime.now()
                 saleTime = my_date.strftime('%Y-%m-%d %H:%M:%S.%f')
                 myCursor.execute(glb_UpdateSales,(salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,salesObj.productID,
-                                 salesObj.amount, destTypeOfCollection, saleTime, salesID, salesObj.salesLineID, srcTypeOfCollection,
-                                 salesObj.saleDate))
+                                 salesObj.amount, destTypeOfCollection, saleTime, glb_locationid,salesID, salesObj.salesLineID, srcTypeOfCollection,
+                                 salesObj.saleDate,glb_locationid))
             conn.commit()
             myCursor.close()
             conn.close()
@@ -235,13 +235,13 @@ def sales_save(self, typeOfCollection):
             myCursor = conn.cursor()
             for salesObj in glb_sales:
                 myCursor.execute(glb_SelectSalesLineExists,
-                                 (salesObj.salesID,salesObj.salesLineID, salesObj.saleDate))
+                                 (salesObj.salesID,salesObj.salesLineID, salesObj.saleDate,glb_locationid))
                 number_of_rows = myCursor.fetchall()[0][0]
                 if number_of_rows > 0:
                     myCursor.execute(glb_UpdateSalesLine,
                                      (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,
-                                     salesObj.productID,salesObj.amount, typeOfCollection, salesObj.personelID,
-                                     salesObj.salesID,salesObj.salesLineID,salesObj.saleDate))
+                                     salesObj.productID,salesObj.amount, typeOfCollection,glb_locationid,salesObj.personelID,
+                                     salesObj.salesID,salesObj.salesLineID,salesObj.saleDate,glb_locationid))
                     conn.commit()
                 else:
                     paidAmount=0.0
@@ -266,6 +266,7 @@ def sales_load(self,salesID, typeOfCollection):
     global glb_user
     global glb_password
     global glb_SelectSales
+    global glb_locationid
 
     try:
         conn = mysql.connector.connect(host=glb_host,
@@ -275,7 +276,7 @@ def sales_load(self,salesID, typeOfCollection):
         if conn.is_connected():
             myCursor = conn.cursor()
             myCursor.execute(glb_SelectSales,
-                             (salesID,typeOfCollection,))
+                             (salesID,typeOfCollection,glb_locationid))
             rows = myCursor.fetchall()
             glb_sales_line_id = 1
             for row in rows:
