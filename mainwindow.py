@@ -190,9 +190,7 @@ def sales_update(self, salesID, srcTypeOfCollection, destTypeOfCollection):
             for salesObj in glb_sales:
                 my_date = datetime.now()
                 saleTime = my_date.strftime('%Y-%m-%d %H:%M:%S.%f')
-                myCursor.execute(glb_UpdateSales,(salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,salesObj.productID,
-                                 salesObj.amount, destTypeOfCollection, saleTime, glb_locationid,glb_base_weight, salesObj.salesLineID, srcTypeOfCollection,
-                                 salesObj.saleDate,glb_locationid,))
+                myCursor.execute(glb_UpdateSales,(salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.productID, salesObj.amount, destTypeOfCollection, saleTime, glb_locationid, glb_base_weight,salesObj.salesID, salesObj.salesLineID, srcTypeOfCollection, salesObj.saleDate, glb_locationid,))
             conn.commit()
             myCursor.close()
             conn.close()
