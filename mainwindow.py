@@ -27,11 +27,11 @@ glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesm
 glb_SelectCounter ="select counter from salescounter where salesDate=%s and locationID=%s;"
 glb_UpdateCounter = "Update salescounter set counter=%s where salesDate=%s and locationID=%s;"
 glb_InsertCounter = "Insert into salescounter (salesDate, counter,locationID) values (%s,%s,%s);"
-glb_UpdateSales ="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s, locationID=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
+glb_UpdateSales ="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s, locationID=%s,dara=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
 glb_SelectSalesLineExists="select count(*) from salesmodels where salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
-glb_UpdateSalesLine="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s,locationID=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
-glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID) values (%s,%s,%s,%s,%s,%s,%s,%s,%s);"
-glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s and locationID=%s;"
+glb_UpdateSalesLine="update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s,locationID=%s,dara=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
+glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID,dara) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
+glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection,dara from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s and locationID=%s;"
 glb_SelectProductByBarcode ="Select productID, productName, productRetailPrice from productmodels where productBarcodeID=%s;"
 glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 and locationID=%s order by salesID;"
 glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  typeOfCollection = 0 and locationID=%s order by salesID;"
@@ -148,6 +148,9 @@ class salescounter(object):
 class Sales(object):
     def __init__(self, salesID=None, salesLineID=None, personelID=None, productID=None, Name=None,
                  retailPrice=None, amount=None, typeOfCollection=None):
+        global glb_base_weight
+        global glb_locationid
+
         my_date = datetime.now()
         self.saleDate = my_date.strftime('%Y-%m-%d')
         self.salesID = salesID
@@ -164,6 +167,8 @@ class Sales(object):
         # 1 paid in cash;
         # 2 paid by credit card;
         # 3 other type of payment;
+        self.locationID = glb_locationid
+        self.dara = glb_base_weight
 
 
 def sales_update(self, salesID, srcTypeOfCollection, destTypeOfCollection):
@@ -172,6 +177,8 @@ def sales_update(self, salesID, srcTypeOfCollection, destTypeOfCollection):
     global glb_user
     global glb_password
     global glb_UpdateSales
+    global glb_base_weight
+    global glb_locationid
 
     try:
         conn = mysql.connector.connect(host=glb_host,
@@ -184,7 +191,7 @@ def sales_update(self, salesID, srcTypeOfCollection, destTypeOfCollection):
                 my_date = datetime.now()
                 saleTime = my_date.strftime('%Y-%m-%d %H:%M:%S.%f')
                 myCursor.execute(glb_UpdateSales,(salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,salesObj.productID,
-                                 salesObj.amount, destTypeOfCollection, saleTime, glb_locationid,salesID, salesObj.salesLineID, srcTypeOfCollection,
+                                 salesObj.amount, destTypeOfCollection, saleTime, glb_locationid,glb_base_weight, salesObj.salesLineID, srcTypeOfCollection,
                                  salesObj.saleDate,glb_locationid))
             conn.commit()
             myCursor.close()
@@ -225,6 +232,7 @@ def sales_save(self, typeOfCollection):
     global glb_UpdateSalesLine
     global glb_InsertSalesLine
     global glb_locationid
+    global glb_base_weight
 
     try:
         conn = mysql.connector.connect(host=glb_host,
@@ -240,14 +248,14 @@ def sales_save(self, typeOfCollection):
                 if number_of_rows > 0:
                     myCursor.execute(glb_UpdateSalesLine,
                                      (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,
-                                     salesObj.productID,salesObj.amount, typeOfCollection,glb_locationid,salesObj.personelID,
+                                     salesObj.productID,salesObj.amount, typeOfCollection,glb_locationid,glb_base_weight, salesObj.personelID,
                                      salesObj.salesID,salesObj.salesLineID,salesObj.saleDate,glb_locationid))
                     conn.commit()
                 else:
                     paidAmount=0.0
                     myCursor.execute(glb_InsertSalesLine,
                                      (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID,
-                                      salesObj.personelID, salesObj.productID,salesObj.amount,paidAmount,typeOfCollection,glb_locationid))
+                                      salesObj.personelID, salesObj.productID,salesObj.amount,paidAmount,typeOfCollection,glb_locationid,glb_base_weight))
             conn.commit()
             myCursor.close()
             conn.close()
@@ -267,6 +275,7 @@ def sales_load(self,salesID, typeOfCollection):
     global glb_password
     global glb_SelectSales
     global glb_locationid
+    global glb_base_weight
 
     try:
         conn = mysql.connector.connect(host=glb_host,
@@ -291,6 +300,8 @@ def sales_load(self,salesID, typeOfCollection):
                 salesObj.retailPrice = row[6]
                 salesObj.Name = row[7]
                 salesObj.typeOfCollection = row[8]
+                salesObj.dara=row[9]
+                glb_base_weight = salesObj.dara
                 glb_sales.append(salesObj)
                 glb_sales_line_id = glb_sales_line_id + 1
         else:
@@ -1144,6 +1155,7 @@ class MainWindow(tk.Tk):
 
         w, h = top.winfo_screenwidth()/2, root.winfo_screenheight()
         top.geometry("%dx%d+0+0" % (w, h))
+        top.attributes("-fullscreen", FALSE)
         # top.geometry("800x480+1571+152")
         top.title("Terazi Ara Yüzü")
         top.configure(background="#d9d9d9")
@@ -1182,7 +1194,7 @@ class MainWindow(tk.Tk):
         t2.start()
 
         if glb_windows_env:
-           connect(self, new_data, 1, 9600, '6')
+           connect(self, new_data, 1, 9600, '5')
         else:
            connect(self, new_data, 2, 9600, 'USB0')
         font18 = "-family {Segoe UI} -size 18 -slant " \
@@ -1232,6 +1244,7 @@ class MainWindow(tk.Tk):
         self.newWindow.products_sold_total.tag_add("right",1.0,"end")
         self.newWindow.products_sold_total.place(relx=0.830,rely=0.87,relheight=0.10,relwidth=0.15)
         self.newWindow.products_sold_total.configure(font=font18,bg='dark red',fg='white')
+
 
 def connect(self, new_data, env, baud, port):
     """The function initiates the Connection to the UART device with the Port and Buad fed through the Entry
