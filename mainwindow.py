@@ -192,7 +192,7 @@ def sales_update(self, salesID, srcTypeOfCollection, destTypeOfCollection):
                 saleTime = my_date.strftime('%Y-%m-%d %H:%M:%S.%f')
                 myCursor.execute(glb_UpdateSales,(salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,salesObj.productID,
                                  salesObj.amount, destTypeOfCollection, saleTime, glb_locationid,glb_base_weight, salesObj.salesLineID, srcTypeOfCollection,
-                                 salesObj.saleDate,glb_locationid))
+                                 salesObj.saleDate,glb_locationid,))
             conn.commit()
             myCursor.close()
             conn.close()
@@ -215,7 +215,7 @@ def sales_hard_delete(self, salesID):
             myCursor = conn.cursor()
             my_date = datetime.now()
             saleDate = my_date.strftime('%Y-%m-%d')
-            myCursor.execute(glb_salesDelete,(saleDate,salesID,glb_locationid))
+            myCursor.execute(glb_salesDelete,(saleDate,salesID,glb_locationid,))
             conn.commit()
         else:
             add_to_log(self, "sales_save","Bağlantı Hatası")
@@ -894,8 +894,7 @@ class MainWindow(tk.Tk):
         root.update()
         sales_hard_delete(self,glb_customer_no)
         sales_save(self,-1)
-        sales_update(self,glb_customer_no, -1,
-                     0)  # update which has value -1 (actively served customer) to 0 (sent to cashier)
+        sales_update(self,glb_customer_no, -1, 0)  # update which has value -1 (actively served customer) to 0 (sent to cashier)
         glb_sales.clear()
         self.update_products_sold()
         self.update_products_sold_for_customer()
