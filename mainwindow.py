@@ -1289,8 +1289,8 @@ def get_data(self, new_data):
             serial_data = serial_data.rstrip('\n')
             add_to_log(self, "Seridata", "#" + serial_data + "#")
             if (serial_data[0:1] == '+') and (serial_data.find("kg",1,len(serial_data))):
-                if (filter_data != serial_data[4:serial_data.index("kg")]):
-                   filter_data = serial_data[4:serial_data.index("kg")]
+                if (filter_data != serial_data[2:serial_data.index("kg")]):
+                   filter_data = serial_data[2:serial_data.index("kg")]
                    new_data.set()
                    add_to_log(self, "SeriFilter", "#" + filter_data + "#")
                    print(filter_data)
