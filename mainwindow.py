@@ -1247,13 +1247,6 @@ class MainWindow(tk.Tk):
 def connect(self, new_data, env, baud, port):
     """The function initiates the Connection to the UART device with the Port and Buad fed through the Entry
     boxes in the application.
-
-    The radio button selects the platform, as the serial object has different key phrases
-    for Linux and Windows. Some Exceptions have been made to prevent the app from crashing,
-    such as blank entry fields and value errors, this is due to the state-less-ness of the
-    UART device, the device sends data at regular intervals irrespective of the master's state.
-
-    The other Parts are self explanatory.
     """
 
     global serial_object
@@ -1267,8 +1260,7 @@ def connect(self, new_data, env, baud, port):
         if env == 2 or port == 'USB1':
             """if windows give message. If linux and tested for USB1 then error else USB0 then test for USB1
             """
-            messagebox.showinfo("Hata Mesajı",
-                                "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
+            messagebox.showinfo("Hata Mesajı", "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
         add_to_log(self, "Connect", "Seri Port Hatası")
         return 0
     t1 = threading.Thread(target=get_data,
@@ -1276,6 +1268,7 @@ def connect(self, new_data, env, baud, port):
     t1.daemon = True
     t1.start()
     return 1
+
 
 def get_data(self, new_data):
     """This function serves the purpose of collecting data from the serial object and storing
