@@ -1264,15 +1264,18 @@ def connect(self, new_data, env, baud, port):
         elif env == 1:
             serial_object = serial.Serial('COM' + str(port), baud)
     except serial.SerialException as msg:
-        if (port=='USB1'):
-            messagebox.showinfo("Hata Mesajı", "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
+        if env == 2 or port == 'USB1':
+            """if windows give message. If linux and tested for USB1 then error else USB0 then test for USB1
+            """
+            messagebox.showinfo("Hata Mesajı",
+                                "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
         add_to_log(self, "Connect", "Seri Port Hatası")
         return 0
     t1 = threading.Thread(target=get_data,
                           args=(self, new_data,))
     t1.daemon = True
     t1.start()
-
+    return 1
 
 def get_data(self, new_data):
     """This function serves the purpose of collecting data from the serial object and storing
