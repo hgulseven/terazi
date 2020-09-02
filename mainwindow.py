@@ -1189,11 +1189,11 @@ class MainWindow(tk.Tk):
         t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
         t2.daemon = True
         t2.start()
-
-        if glb_windows_env:
-           connect(self, new_data, 1, 9600, '5')
-        else:
-           connect(self, new_data, 2, 9600, 'USB0')
+        if (glb_data_entry ==0):
+            if glb_windows_env:
+                connect(self, new_data, 1, 9600, '5')
+            else:
+                connect(self, new_data, 2, 9600, 'USB0')
         font18 = "-family {Segoe UI} -size 18 -slant " \
                  "roman -underline 0 -overstrike 0"
         font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
@@ -1343,6 +1343,9 @@ def getopts(argv):
 if __name__ == '__main__':
     from sys import argv  # example client code
     myargs = getopts(argv)
+    glb_data_entry=0
+    if ("-dataentry" in myargs.keys() ):
+        glb_data_entry=1
     if ("-location" in myargs.keys()):
         glb_locationid = myargs["-location"]
         vp_start_gui()
