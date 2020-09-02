@@ -1193,7 +1193,8 @@ class MainWindow(tk.Tk):
             if glb_windows_env:
                 connect(self, new_data, 1, 9600, '5')
             else:
-                connect(self, new_data, 2, 9600, 'USB0')
+                if (connect(self, new_data, 2, 9600, 'USB0')==0):
+                    connect(self, new_data, 2, 9600, 'USB1')
         font18 = "-family {Segoe UI} -size 18 -slant " \
                  "roman -underline 0 -overstrike 0"
         font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
@@ -1263,10 +1264,10 @@ def connect(self, new_data, env, baud, port):
         elif env == 1:
             serial_object = serial.Serial('COM' + str(port), baud)
     except serial.SerialException as msg:
-        messagebox.showinfo("Hata Mesajı", "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
+        if (port=='USB1'):
+            messagebox.showinfo("Hata Mesajı", "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
         add_to_log(self, "Connect", "Seri Port Hatası")
-
-        return
+        return 0
     t1 = threading.Thread(target=get_data,
                           args=(self, new_data,))
     t1.daemon = True
