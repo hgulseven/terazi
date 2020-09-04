@@ -1199,11 +1199,11 @@ class MainWindow(tk.Tk):
         res = 0
         if glb_data_entry == 0:
             if glb_windows_env:
-                connect(self, 1, 9600, '5')
+                res=connect(self, 1, 9600, '5')
             else:
-                if (connect(self, 2, 9600, 'USB0')==0):
+                res=connect(self, 2, 9600, 'USB0')
+                if res==0:
                     res=connect(self, 2, 9600, 'USB1')
-
         if res == 1:
             t1 = threading.Thread(target=get_data,
                                       args=(self, self.scale_display,))
