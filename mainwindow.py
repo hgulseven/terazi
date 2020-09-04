@@ -1185,66 +1185,73 @@ class MainWindow(tk.Tk):
         self.paging_frame_def()
         self.productssold_frame_def()
         filter_data="0.000"
-        new_data = threading.Event()
-        t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
-        t2.daemon = True
-        t2.start()
-        if (glb_data_entry ==0):
+#        new_data = threading.Event()
+#        t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
+#        t2.daemon = True
+#        t2.start()
+        res = 0
+        if glb_data_entry == 0:
             if glb_windows_env:
-                connect(self, new_data, 1, 9600, '5')
+                connect(self, 1, 9600, '5')
             else:
-                if (connect(self, new_data, 2, 9600, 'USB0')==0):
-                    connect(self, new_data, 2, 9600, 'USB1')
-        font18 = "-family {Segoe UI} -size 18 -slant " \
+                if (connect(self, 2, 9600, 'USB0')==0):
+                    res=connect(self, 2, 9600, 'USB1')
+
+        if res == 1:
+            t1 = threading.Thread(target=get_data,
+                                      args=(self, self.scale_display,))
+            t1.daemon = True
+            t1.start()
+            font18 = "-family {Segoe UI} -size 18 -slant " \
                  "roman -underline 0 -overstrike 0"
-        font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
+            font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
                 " -underline 0 -overstrike 0"
-        self.newWindow = tk.Toplevel(self.master)
-        self.newWindow.geometry("%dx%d+1200+0" % (w, h))
-        self.newWindow.attributes("-fullscreen", True)
-        self.newWindow.title("Müşteri Bilgi Ekranı")
+            self.newWindow = tk.Toplevel(self.master)
+            self.newWindow.geometry("%dx%d+1200+0" % (w, h))
+            self.newWindow.attributes("-fullscreen", True)
+            self.newWindow.title("Müşteri Bilgi Ekranı")
 #        load = Image.open("logo.png")
 #        render = ImageTk.PhotoImage(load)
 #        img = Label(self.newWindow, image=render)
 #        img.place(relx=0.300, rely=0.01, relheight=0.09, relwidth=0.50)
 #        img.image = render
-        self.newWindow.company_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.company_label.place(relx=0.40, rely=0.0, relheight=0.05, relwidth=0.200)
-        self.newWindow.company_label.config(text='''G Ü L S E V EN''',fg='dark red')
-        self.newWindow.products_sold_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_label.place(relx=0.010, rely=0.05, relheight=0.1, relwidth=0.700)
-        self.newWindow.products_sold_label.config(text=''' Ürün''',anchor=W,bg='dark red',fg='white')
-        self.newWindow.products_sold = tk.Text(self.newWindow, height=2, width=30)
-        self.newWindow.products_sold.place(relx=0.010, rely=0.16, relheight=0.70, relwidth=0.700)
-        self.newWindow.products_sold.configure(font=font18)
-        self.newWindow.products_sold.configure(takefocus="")
-        self.newWindow.products_sold_amount_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_amount_label.place(relx=0.720, rely=0.05, relheight=0.1, relwidth=0.10)
-        self.newWindow.products_sold_amount_label.config(text='''Miktar ''',anchor=E,bg='dark red',fg='white')
-        self.newWindow.products_sold_amount = tk.Text(self.newWindow, height=2, width=10)
-        self.newWindow.products_sold_amount.tag_configure("right",justify=RIGHT)
-        self.newWindow.products_sold_amount.tag_add("right",1.0,"end")
-        self.newWindow.products_sold_amount.place(relx=0.720,rely=0.16,relheight=0.70,relwidth=0.10)
-        self.newWindow.products_sold_amount.configure(font=font18)
-        self.newWindow.products_sold_price_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_price_label.place(relx=0.830, rely=0.05, relheight=0.1, relwidth=0.15)
-        self.newWindow.products_sold_price_label.config(text='''Tutar ''',anchor=E,bg='dark red', fg='white')
-        self.newWindow.products_sold_price= tk.Text(self.newWindow, height=2, width=10)
-        self.newWindow.products_sold_price.tag_configure("right",justify=RIGHT)
-        self.newWindow.products_sold_price.tag_add("right",1.0,"end")
-        self.newWindow.products_sold_price.place(relx=0.830,rely=0.16,relheight=0.70,relwidth=0.15)
-        self.newWindow.products_sold_price.configure(font=font18)
-        self.newWindow.products_sold_total_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_total_label.place(relx=0.720, rely=0.87, relheight=0.1, relwidth=0.10)
-        self.newWindow.products_sold_total_label.config(text=''' TOPLAM ''',anchor=NW,bg='dark red',fg='white')
-        self.newWindow.products_sold_total= tk.Text(self.newWindow, height=2, width=10)
-        self.newWindow.products_sold_total.tag_configure("right",justify=RIGHT)
-        self.newWindow.products_sold_total.tag_add("right",1.0,"end")
-        self.newWindow.products_sold_total.place(relx=0.830,rely=0.87,relheight=0.10,relwidth=0.15)
-        self.newWindow.products_sold_total.configure(font=font18,bg='dark red',fg='white')
+            self.newWindow.company_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
+            self.newWindow.company_label.place(relx=0.40, rely=0.0, relheight=0.05, relwidth=0.200)
+            self.newWindow.company_label.config(text='''G Ü L S E V EN''',fg='dark red')
+            self.newWindow.products_sold_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
+            self.newWindow.products_sold_label.place(relx=0.010, rely=0.05, relheight=0.1, relwidth=0.700)
+            self.newWindow.products_sold_label.config(text=''' Ürün''',anchor=W,bg='dark red',fg='white')
+            self.newWindow.products_sold = tk.Text(self.newWindow, height=2, width=30)
+            self.newWindow.products_sold.place(relx=0.010, rely=0.16, relheight=0.70, relwidth=0.700)
+            self.newWindow.products_sold.configure(font=font18)
+            self.newWindow.products_sold.configure(takefocus="")
+            self.newWindow.products_sold_amount_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
+            self.newWindow.products_sold_amount_label.place(relx=0.720, rely=0.05, relheight=0.1, relwidth=0.10)
+            self.newWindow.products_sold_amount_label.config(text='''Miktar ''',anchor=E,bg='dark red',fg='white')
+            self.newWindow.products_sold_amount = tk.Text(self.newWindow, height=2, width=10)
+            self.newWindow.products_sold_amount.tag_configure("right",justify=RIGHT)
+            self.newWindow.products_sold_amount.tag_add("right",1.0,"end")
+            self.newWindow.products_sold_amount.place(relx=0.720,rely=0.16,relheight=0.70,relwidth=0.10)
+            self.newWindow.products_sold_amount.configure(font=font18)
+            self.newWindow.products_sold_price_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
+            self.newWindow.products_sold_price_label.place(relx=0.830, rely=0.05, relheight=0.1, relwidth=0.15)
+            self.newWindow.products_sold_price_label.config(text='''Tutar ''',anchor=E,bg='dark red', fg='white')
+            self.newWindow.products_sold_price= tk.Text(self.newWindow, height=2, width=10)
+            self.newWindow.products_sold_price.tag_configure("right",justify=RIGHT)
+            self.newWindow.products_sold_price.tag_add("right",1.0,"end")
+            self.newWindow.products_sold_price.place(relx=0.830,rely=0.16,relheight=0.70,relwidth=0.15)
+            self.newWindow.products_sold_price.configure(font=font18)
+            self.newWindow.products_sold_total_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
+            self.newWindow.products_sold_total_label.place(relx=0.720, rely=0.87, relheight=0.1, relwidth=0.10)
+            self.newWindow.products_sold_total_label.config(text=''' TOPLAM ''',anchor=NW,bg='dark red',fg='white')
+            self.newWindow.products_sold_total= tk.Text(self.newWindow, height=2, width=10)
+            self.newWindow.products_sold_total.tag_configure("right",justify=RIGHT)
+            self.newWindow.products_sold_total.tag_add("right",1.0,"end")
+            self.newWindow.products_sold_total.place(relx=0.830,rely=0.87,relheight=0.10,relwidth=0.15)
+            self.newWindow.products_sold_total.configure(font=font18,bg='dark red',fg='white')
 
 
-def connect(self, new_data, env, baud, port):
+def connect(self, env, baud, port):
     """The function initiates the Connection to the UART device with the Port and Buad fed through the Entry
     boxes in the application.
     """
@@ -1263,14 +1270,10 @@ def connect(self, new_data, env, baud, port):
             messagebox.showinfo("Hata Mesajı", "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
         add_to_log(self, "Connect", "Seri Port Hatası")
         return 0
-    t1 = threading.Thread(target=get_data,
-                          args=(self, new_data,))
-    t1.daemon = True
-    t1.start()
     return 1
 
 
-def get_data(self, new_data):
+def get_data(self, scale_display):
     """This function serves the purpose of collecting data from the serial object and storing
     the filtered data into a global variable.
 
@@ -1288,7 +1291,11 @@ def get_data(self, new_data):
             if (serial_data[0:1] == '+') and (serial_data.find("kg",1,len(serial_data))):
                 if (filter_data != serial_data[2:serial_data.index("kg")]):
                    filter_data = serial_data[2:serial_data.index("kg")]
-                   new_data.set()
+                   scale_display.delete(1.0, END)
+                   floatval = float(filter_data) - glb_base_weight
+                   mydata = "{:10.3f}".format(floatval)
+                   mydata = mydata.rjust(13)
+                   scale_display.insert(END, mydata)
                    add_to_log(self, "SeriFilter", "#" + filter_data + "#")
                    print(filter_data)
                 else:
