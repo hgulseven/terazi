@@ -816,6 +816,7 @@ class MainWindow(tk.Tk):
         self.btn_clearlasttransaction.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0",
                                                 text='''Son İşlemi Sil''', width=20)
 
+
     def next_product_button_clicked(self):
         global glb_product_page_count
         global glb_callback_customers_page_count
@@ -1184,6 +1185,12 @@ class MainWindow(tk.Tk):
         self.employee_frame_def()
         self.paging_frame_def()
         self.productssold_frame_def()
+        """"Customer view window definition """
+        self.newWindow = tk.Toplevel(self.master)
+        self.newWindow.geometry("%dx%d+1200+0" % (w, h))
+        self.newWindow.attributes("-fullscreen", True)
+        self.newWindow.title("Müşteri Bilgi Ekranı")
+        customer_window_def(self.newWindow)
         filter_data="0.000"
 #        new_data = threading.Event()
 #        t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
@@ -1202,53 +1209,48 @@ class MainWindow(tk.Tk):
                                       args=(self, self.scale_display,))
             t1.daemon = True
             t1.start()
-            font18 = "-family {Segoe UI} -size 18 -slant " \
+
+def customer_window_def(CustomerWindow):
+        font18 = "-family {Segoe UI} -size 18 -slant " \
                  "roman -underline 0 -overstrike 0"
-            font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
+        font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
                 " -underline 0 -overstrike 0"
-            self.newWindow = tk.Toplevel(self.master)
-            self.newWindow.geometry("%dx%d+1200+0" % (w, h))
-            self.newWindow.attributes("-fullscreen", True)
-            self.newWindow.title("Müşteri Bilgi Ekranı")
-#        load = Image.open("logo.png")
-#        render = ImageTk.PhotoImage(load)
-#        img = Label(self.newWindow, image=render)
-#        img.place(relx=0.300, rely=0.01, relheight=0.09, relwidth=0.50)
-#        img.image = render
-            self.newWindow.company_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-            self.newWindow.company_label.place(relx=0.40, rely=0.0, relheight=0.05, relwidth=0.200)
-            self.newWindow.company_label.config(text='''G Ü L S E V EN''',fg='dark red')
-            self.newWindow.products_sold_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-            self.newWindow.products_sold_label.place(relx=0.010, rely=0.05, relheight=0.1, relwidth=0.700)
-            self.newWindow.products_sold_label.config(text=''' Ürün''',anchor=W,bg='dark red',fg='white')
-            self.newWindow.products_sold = tk.Text(self.newWindow, height=2, width=30)
-            self.newWindow.products_sold.place(relx=0.010, rely=0.16, relheight=0.70, relwidth=0.700)
-            self.newWindow.products_sold.configure(font=font18)
-            self.newWindow.products_sold.configure(takefocus="")
-            self.newWindow.products_sold_amount_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-            self.newWindow.products_sold_amount_label.place(relx=0.720, rely=0.05, relheight=0.1, relwidth=0.10)
-            self.newWindow.products_sold_amount_label.config(text='''Miktar ''',anchor=E,bg='dark red',fg='white')
-            self.newWindow.products_sold_amount = tk.Text(self.newWindow, height=2, width=10)
-            self.newWindow.products_sold_amount.tag_configure("right",justify=RIGHT)
-            self.newWindow.products_sold_amount.tag_add("right",1.0,"end")
-            self.newWindow.products_sold_amount.place(relx=0.720,rely=0.16,relheight=0.70,relwidth=0.10)
-            self.newWindow.products_sold_amount.configure(font=font18)
-            self.newWindow.products_sold_price_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-            self.newWindow.products_sold_price_label.place(relx=0.830, rely=0.05, relheight=0.1, relwidth=0.15)
-            self.newWindow.products_sold_price_label.config(text='''Tutar ''',anchor=E,bg='dark red', fg='white')
-            self.newWindow.products_sold_price= tk.Text(self.newWindow, height=2, width=10)
-            self.newWindow.products_sold_price.tag_configure("right",justify=RIGHT)
-            self.newWindow.products_sold_price.tag_add("right",1.0,"end")
-            self.newWindow.products_sold_price.place(relx=0.830,rely=0.16,relheight=0.70,relwidth=0.15)
-            self.newWindow.products_sold_price.configure(font=font18)
-            self.newWindow.products_sold_total_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-            self.newWindow.products_sold_total_label.place(relx=0.720, rely=0.87, relheight=0.1, relwidth=0.10)
-            self.newWindow.products_sold_total_label.config(text=''' TOPLAM ''',anchor=NW,bg='dark red',fg='white')
-            self.newWindow.products_sold_total= tk.Text(self.newWindow, height=2, width=10)
-            self.newWindow.products_sold_total.tag_configure("right",justify=RIGHT)
-            self.newWindow.products_sold_total.tag_add("right",1.0,"end")
-            self.newWindow.products_sold_total.place(relx=0.830,rely=0.87,relheight=0.10,relwidth=0.15)
-            self.newWindow.products_sold_total.configure(font=font18,bg='dark red',fg='white')
+
+        CustomerWindow.company_label = tk.Label(CustomerWindow, height=1, width=30, font=font18)
+        CustomerWindow.company_label.place(relx=0.40, rely=0.0, relheight=0.05, relwidth=0.200)
+        CustomerWindow.company_label.config(text='''G Ü L S E V EN''', fg='dark red')
+        CustomerWindow.products_sold_label = tk.Label(CustomerWindow, height=1, width=30, font=font18)
+        CustomerWindow.products_sold_label.place(relx=0.010, rely=0.05, relheight=0.1, relwidth=0.700)
+        CustomerWindow.products_sold_label.config(text=''' Ürün''', anchor=W, bg='dark red', fg='white')
+        CustomerWindow.products_sold = tk.Text(CustomerWindow, height=2, width=30)
+        CustomerWindow.products_sold.place(relx=0.010, rely=0.16, relheight=0.70, relwidth=0.700)
+        CustomerWindow.products_sold.configure(font=font18)
+        CustomerWindow.products_sold.configure(takefocus="")
+        CustomerWindow.products_sold_amount_label = tk.Label(CustomerWindow, height=1, width=30, font=font18)
+        CustomerWindow.products_sold_amount_label.place(relx=0.720, rely=0.05, relheight=0.1, relwidth=0.10)
+        CustomerWindow.products_sold_amount_label.config(text='''Miktar ''', anchor=E, bg='dark red', fg='white')
+        CustomerWindow.products_sold_amount = tk.Text(CustomerWindow, height=2, width=10)
+        CustomerWindow.products_sold_amount.tag_configure("right", justify=RIGHT)
+        CustomerWindow.products_sold_amount.tag_add("right", 1.0, "end")
+        CustomerWindow.products_sold_amount.place(relx=0.720, rely=0.16, relheight=0.70, relwidth=0.10)
+        CustomerWindow.products_sold_amount.configure(font=font18)
+        CustomerWindow.products_sold_price_label = tk.Label(CustomerWindow, height=1, width=30, font=font18)
+        CustomerWindow.products_sold_price_label.place(relx=0.830, rely=0.05, relheight=0.1, relwidth=0.15)
+        CustomerWindow.products_sold_price_label.config(text='''Tutar ''', anchor=E, bg='dark red', fg='white')
+        CustomerWindow.products_sold_price = tk.Text(CustomerWindow, height=2, width=10)
+        CustomerWindow.products_sold_price.tag_configure("right", justify=RIGHT)
+        CustomerWindow.products_sold_price.tag_add("right", 1.0, "end")
+        CustomerWindow.products_sold_price.place(relx=0.830, rely=0.16, relheight=0.70, relwidth=0.15)
+        CustomerWindow.products_sold_price.configure(font=font18)
+        CustomerWindow.products_sold_total_label = tk.Label(CustomerWindow, height=1, width=30, font=font18)
+        CustomerWindow.products_sold_total_label.place(relx=0.720, rely=0.87, relheight=0.1, relwidth=0.10)
+        CustomerWindow.products_sold_total_label.config(text=''' TOPLAM ''', anchor=NW, bg='dark red', fg='white')
+        CustomerWindow.products_sold_total = tk.Text(CustomerWindow, height=2, width=10)
+        CustomerWindow.products_sold_total.tag_configure("right", justify=RIGHT)
+        CustomerWindow.products_sold_total.tag_add("right", 1.0, "end")
+        CustomerWindow.products_sold_total.place(relx=0.830, rely=0.87, relheight=0.10, relwidth=0.15)
+        CustomerWindow.products_sold_total.configure(font=font18, bg='dark red', fg='white')
+
 
 
 def connect(self, env, baud, port):
@@ -1349,7 +1351,7 @@ if __name__ == '__main__':
     myargs = getopts(argv)
     glb_data_entry=0
     if ("-dataentry" in myargs.keys() ):
-        glb_data_entry=1
+        glb_data_entry=myargs["-dataentry"]
     if ("-location" in myargs.keys()):
         glb_locationid = myargs["-location"]
         vp_start_gui()
