@@ -739,7 +739,7 @@ class MainWindow(tk.Tk):
         self.entry_sum = tk.Text(self.products_sold_frame, height=1, width=80, font=font12)
         self.entry_sum.tag_configure("right",justify=RIGHT)
         self.entry_sum.tag_add("right",1.0,"end")
-        self.entry_sum.place(relx=0.800, rely=0.88, relheight=0.10, relwidth=0.180)
+        self.entry_sum.place(relx=0.790, rely=0.88, relheight=0.10, relwidth=0.190)
 
     def functions_frame_def(self):
         global top
