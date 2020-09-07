@@ -730,7 +730,7 @@ class MainWindow(tk.Tk):
         self.entry_calculatedtotal.place(relx=0.810, rely=0.02, relheight=0.84, relwidth=0.170)
         self.entry_calculatedtotal.configure(font=font10, takefocus="")
         self.label_sum = tk.Label(self.products_sold_frame)
-        self.label_sum.place(relx=0.037, rely=0.88, relheight=0.10, relwidth=0.330)
+        self.label_sum.place(relx=0.040, rely=0.88, relheight=0.10, relwidth=0.300)
         # self.label_sum.configure(background="#d9d9d9")
         self.label_sum.configure(disabledforeground="#a3a3a3")
         self.label_sum.configure(font=font12)
@@ -739,7 +739,7 @@ class MainWindow(tk.Tk):
         self.entry_sum = tk.Text(self.products_sold_frame, height=1, width=80, font=font12)
         self.entry_sum.tag_configure("right",justify=RIGHT)
         self.entry_sum.tag_add("right",1.0,"end")
-        self.entry_sum.place(relx=0.810, rely=0.88, relheight=0.10, relwidth=0.170)
+        self.entry_sum.place(relx=0.800, rely=0.88, relheight=0.10, relwidth=0.180)
 
     def functions_frame_def(self):
         global top
