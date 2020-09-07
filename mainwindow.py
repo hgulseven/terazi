@@ -21,7 +21,7 @@ glb_user = "hakan"
 glb_password = "QAZwsx135"
 glb_locationid = ""
 # queries
-glb_GetTeraziProducts = "Select  TeraziID, productmodels.productID, productName, productRetailPrice from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"
+glb_GetTeraziProducts = "Select  TeraziID, productmodels.productID, productName, productRetailPrice, productBarcodeID from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"
 glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
 glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels;"
 glb_SelectCounter ="select counter from salescounter where salesDate=%s and locationID=%s;"
@@ -437,6 +437,7 @@ def load_products(self, ID):
                 productObj.productID = row[1]
                 productObj.Name = row[2]
                 productObj.price = float(row[3])
+                productObj.productBarcodeID = row[4]
                 glb_product_names.append(productObj)
             myCursor.close()
             conn.close()
@@ -1138,7 +1139,18 @@ class MainWindow(tk.Tk):
             salesObj.salesLineID = glb_sales_line_id
             glb_sales_line_id = glb_sales_line_id + 1
             salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
-            salesObj.amount = float(self.scale_display.get("1.0", END).strip("\n"))
+            salesObj.productBarcodeID=[x.productBarcodeID for x in glb_product_names if x.Name == salesObj.Name][0]
+            """if productBarcodeID is 9999 then amount becomes 1. this is used for products where barcode ID does not exists and price does not depend on weight"""
+            amountTxt=""
+            if salesObj.productBarcodeID == "9999":
+                amountTxt="1.0"
+            else:
+                amountTxt = self.scale_display.get("1.0", END).strip("\n")
+            if len(amountTxt) > 0:
+                salesObj.amount = float(amountTxt)
+            else:
+                self.message_box_text.insert(END, "Miktar bilgisi hatalı")
+                return
             salesObj.retailPrice = [x.price for x in glb_product_names if x.Name == salesObj.Name][0]
             salesObj.productID = [x.productID for x in glb_product_names if x.Name == salesObj.Name][0]
             salesObj.typeOfCollection = 0
