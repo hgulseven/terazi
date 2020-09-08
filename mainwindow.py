@@ -21,7 +21,7 @@ glb_user = "hakan"
 glb_password = "QAZwsx135"
 glb_locationid = ""
 # queries
-glb_GetTeraziProducts = "Select  TeraziID, productmodels.productID, productName, productRetailPrice from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"
+glb_GetTeraziProducts = "Select  TeraziID, productmodels.productID, productName, productRetailPrice, productBarcodeID from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"
 glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
 glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels;"
 glb_SelectCounter ="select counter from salescounter where salesDate=%s and locationID=%s;"
@@ -437,6 +437,7 @@ def load_products(self, ID):
                 productObj.productID = row[1]
                 productObj.Name = row[2]
                 productObj.price = float(row[3])
+                productObj.productBarcodeID = row[4]
                 glb_product_names.append(productObj)
             myCursor.close()
             conn.close()
@@ -738,7 +739,7 @@ class MainWindow(tk.Tk):
         self.entry_sum = tk.Text(self.products_sold_frame, height=1, width=80, font=font12)
         self.entry_sum.tag_configure("right",justify=RIGHT)
         self.entry_sum.tag_add("right",1.0,"end")
-        self.entry_sum.place(relx=0.810, rely=0.88, relheight=0.10, relwidth=0.190)
+        self.entry_sum.place(relx=0.790, rely=0.88, relheight=0.10, relwidth=0.190)
 
     def functions_frame_def(self):
         global top
@@ -815,6 +816,7 @@ class MainWindow(tk.Tk):
         self.btn_clearlasttransaction.configure(disabledforeground="#a3a3a3", font=font11, foreground="#000000")
         self.btn_clearlasttransaction.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0",
                                                 text='''Son İşlemi Sil''', width=20)
+
 
     def next_product_button_clicked(self):
         global glb_product_page_count
@@ -1137,7 +1139,18 @@ class MainWindow(tk.Tk):
             salesObj.salesLineID = glb_sales_line_id
             glb_sales_line_id = glb_sales_line_id + 1
             salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
-            salesObj.amount = float(self.scale_display.get("1.0", END).strip("\n"))
+            salesObj.productBarcodeID=[x.productBarcodeID for x in glb_product_names if x.Name == salesObj.Name][0]
+            """if productBarcodeID is 9999 then amount becomes 1. this is used for products where barcode ID does not exists and price does not depend on weight"""
+            amountTxt=""
+            if salesObj.productBarcodeID == "9999":
+                amountTxt="1.0"
+            else:
+                amountTxt = self.scale_display.get("1.0", END).strip("\n")
+            if len(amountTxt) > 0:
+                salesObj.amount = float(amountTxt)
+            else:
+                self.message_box_text.insert(END, "Miktar bilgisi hatalı")
+                return
             salesObj.retailPrice = [x.price for x in glb_product_names if x.Name == salesObj.Name][0]
             salesObj.productID = [x.productID for x in glb_product_names if x.Name == salesObj.Name][0]
             salesObj.typeOfCollection = 0
@@ -1184,67 +1197,75 @@ class MainWindow(tk.Tk):
         self.employee_frame_def()
         self.paging_frame_def()
         self.productssold_frame_def()
-        filter_data="0.000"
-        new_data = threading.Event()
-        t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
-        t2.daemon = True
-        t2.start()
-        if (glb_data_entry ==0):
-            if glb_windows_env:
-                connect(self, new_data, 1, 9600, '5')
-            else:
-                if (connect(self, new_data, 2, 9600, 'USB0')==0):
-                    connect(self, new_data, 2, 9600, 'USB1')
-        font18 = "-family {Segoe UI} -size 18 -slant " \
-                 "roman -underline 0 -overstrike 0"
-        font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
-                " -underline 0 -overstrike 0"
+        """"Customer view window definition """
         self.newWindow = tk.Toplevel(self.master)
         self.newWindow.geometry("%dx%d+1200+0" % (w, h))
         self.newWindow.attributes("-fullscreen", True)
         self.newWindow.title("Müşteri Bilgi Ekranı")
-#        load = Image.open("logo.png")
-#        render = ImageTk.PhotoImage(load)
-#        img = Label(self.newWindow, image=render)
-#        img.place(relx=0.300, rely=0.01, relheight=0.09, relwidth=0.50)
-#        img.image = render
-        self.newWindow.company_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.company_label.place(relx=0.40, rely=0.0, relheight=0.05, relwidth=0.200)
-        self.newWindow.company_label.config(text='''G Ü L S E V EN''',fg='dark red')
-        self.newWindow.products_sold_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_label.place(relx=0.010, rely=0.05, relheight=0.1, relwidth=0.700)
-        self.newWindow.products_sold_label.config(text=''' Ürün''',anchor=W,bg='dark red',fg='white')
-        self.newWindow.products_sold = tk.Text(self.newWindow, height=2, width=30)
-        self.newWindow.products_sold.place(relx=0.010, rely=0.16, relheight=0.70, relwidth=0.700)
-        self.newWindow.products_sold.configure(font=font18)
-        self.newWindow.products_sold.configure(takefocus="")
-        self.newWindow.products_sold_amount_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_amount_label.place(relx=0.720, rely=0.05, relheight=0.1, relwidth=0.10)
-        self.newWindow.products_sold_amount_label.config(text='''Miktar ''',anchor=E,bg='dark red',fg='white')
-        self.newWindow.products_sold_amount = tk.Text(self.newWindow, height=2, width=10)
-        self.newWindow.products_sold_amount.tag_configure("right",justify=RIGHT)
-        self.newWindow.products_sold_amount.tag_add("right",1.0,"end")
-        self.newWindow.products_sold_amount.place(relx=0.720,rely=0.16,relheight=0.70,relwidth=0.10)
-        self.newWindow.products_sold_amount.configure(font=font18)
-        self.newWindow.products_sold_price_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_price_label.place(relx=0.830, rely=0.05, relheight=0.1, relwidth=0.15)
-        self.newWindow.products_sold_price_label.config(text='''Tutar ''',anchor=E,bg='dark red', fg='white')
-        self.newWindow.products_sold_price= tk.Text(self.newWindow, height=2, width=10)
-        self.newWindow.products_sold_price.tag_configure("right",justify=RIGHT)
-        self.newWindow.products_sold_price.tag_add("right",1.0,"end")
-        self.newWindow.products_sold_price.place(relx=0.830,rely=0.16,relheight=0.70,relwidth=0.15)
-        self.newWindow.products_sold_price.configure(font=font18)
-        self.newWindow.products_sold_total_label = tk.Label(self.newWindow,height=1,width=30,font=font18)
-        self.newWindow.products_sold_total_label.place(relx=0.720, rely=0.87, relheight=0.1, relwidth=0.10)
-        self.newWindow.products_sold_total_label.config(text=''' TOPLAM ''',anchor=NW,bg='dark red',fg='white')
-        self.newWindow.products_sold_total= tk.Text(self.newWindow, height=2, width=10)
-        self.newWindow.products_sold_total.tag_configure("right",justify=RIGHT)
-        self.newWindow.products_sold_total.tag_add("right",1.0,"end")
-        self.newWindow.products_sold_total.place(relx=0.830,rely=0.87,relheight=0.10,relwidth=0.15)
-        self.newWindow.products_sold_total.configure(font=font18,bg='dark red',fg='white')
+        customer_window_def(self.newWindow)
+        filter_data="0.000"
+#        new_data = threading.Event()
+#        t2 = threading.Thread(target=update_gui, args=(self.scale_display, new_data,))
+#        t2.daemon = True
+#        t2.start()
+        res = 0
+        if glb_data_entry == 0:
+            if glb_windows_env:
+                res=connect(self, 1, 9600, '5')
+            else:
+                res=connect(self, 2, 9600, 'USB0')
+                if res==0:
+                    res=connect(self, 2, 9600, 'USB1')
+        if res == 1:
+            t1 = threading.Thread(target=get_data,
+                                      args=(self, self.scale_display,))
+            t1.daemon = True
+            t1.start()
+
+def customer_window_def(CustomerWindow):
+        font18 = "-family {Segoe UI} -size 18 -slant " \
+                 "roman -underline 0 -overstrike 0"
+        font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
+                " -underline 0 -overstrike 0"
+
+        CustomerWindow.company_label = tk.Label(CustomerWindow, height=1, width=30, font=font18)
+        CustomerWindow.company_label.place(relx=0.40, rely=0.0, relheight=0.05, relwidth=0.200)
+        CustomerWindow.company_label.config(text='''G Ü L S E V EN''', fg='dark red')
+        CustomerWindow.products_sold_label = tk.Label(CustomerWindow, height=1, width=30, font=font18)
+        CustomerWindow.products_sold_label.place(relx=0.010, rely=0.05, relheight=0.1, relwidth=0.700)
+        CustomerWindow.products_sold_label.config(text=''' Ürün''', anchor=W, bg='dark red', fg='white')
+        CustomerWindow.products_sold = tk.Text(CustomerWindow, height=2, width=30)
+        CustomerWindow.products_sold.place(relx=0.010, rely=0.16, relheight=0.70, relwidth=0.700)
+        CustomerWindow.products_sold.configure(font=font18)
+        CustomerWindow.products_sold.configure(takefocus="")
+        CustomerWindow.products_sold_amount_label = tk.Label(CustomerWindow, height=1, width=30, font=font18)
+        CustomerWindow.products_sold_amount_label.place(relx=0.720, rely=0.05, relheight=0.1, relwidth=0.10)
+        CustomerWindow.products_sold_amount_label.config(text='''Miktar ''', anchor=E, bg='dark red', fg='white')
+        CustomerWindow.products_sold_amount = tk.Text(CustomerWindow, height=2, width=10)
+        CustomerWindow.products_sold_amount.tag_configure("right", justify=RIGHT)
+        CustomerWindow.products_sold_amount.tag_add("right", 1.0, "end")
+        CustomerWindow.products_sold_amount.place(relx=0.720, rely=0.16, relheight=0.70, relwidth=0.10)
+        CustomerWindow.products_sold_amount.configure(font=font18)
+        CustomerWindow.products_sold_price_label = tk.Label(CustomerWindow, height=1, width=30, font=font18)
+        CustomerWindow.products_sold_price_label.place(relx=0.830, rely=0.05, relheight=0.1, relwidth=0.15)
+        CustomerWindow.products_sold_price_label.config(text='''Tutar ''', anchor=E, bg='dark red', fg='white')
+        CustomerWindow.products_sold_price = tk.Text(CustomerWindow, height=2, width=10)
+        CustomerWindow.products_sold_price.tag_configure("right", justify=RIGHT)
+        CustomerWindow.products_sold_price.tag_add("right", 1.0, "end")
+        CustomerWindow.products_sold_price.place(relx=0.830, rely=0.16, relheight=0.70, relwidth=0.15)
+        CustomerWindow.products_sold_price.configure(font=font18)
+        CustomerWindow.products_sold_total_label = tk.Label(CustomerWindow, height=1, width=30, font=font18)
+        CustomerWindow.products_sold_total_label.place(relx=0.720, rely=0.87, relheight=0.1, relwidth=0.10)
+        CustomerWindow.products_sold_total_label.config(text=''' TOPLAM ''', anchor=NW, bg='dark red', fg='white')
+        CustomerWindow.products_sold_total = tk.Text(CustomerWindow, height=2, width=10)
+        CustomerWindow.products_sold_total.tag_configure("right", justify=RIGHT)
+        CustomerWindow.products_sold_total.tag_add("right", 1.0, "end")
+        CustomerWindow.products_sold_total.place(relx=0.830, rely=0.87, relheight=0.10, relwidth=0.15)
+        CustomerWindow.products_sold_total.configure(font=font18, bg='dark red', fg='white')
 
 
-def connect(self, new_data, env, baud, port):
+
+def connect(self, env, baud, port):
     """The function initiates the Connection to the UART device with the Port and Buad fed through the Entry
     boxes in the application.
     """
@@ -1257,20 +1278,16 @@ def connect(self, new_data, env, baud, port):
         elif env == 1:
             serial_object = serial.Serial('COM' + str(port), baud)
     except serial.SerialException as msg:
-        if env == 1 or port == 'USB1':
+        if env == 2 or port == 'USB1':
             """if windows give message. If linux and tested for USB1 then error else USB0 then test for USB1
             """
             messagebox.showinfo("Hata Mesajı", "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
         add_to_log(self, "Connect", "Seri Port Hatası")
         return 0
-    t1 = threading.Thread(target=get_data,
-                          args=(self, new_data,))
-    t1.daemon = True
-    t1.start()
     return 1
 
 
-def get_data(self, new_data):
+def get_data(self, scale_display):
     """This function serves the purpose of collecting data from the serial object and storing
     the filtered data into a global variable.
 
@@ -1288,16 +1305,17 @@ def get_data(self, new_data):
             if (serial_data[0:1] == '+') and (serial_data.find("kg",1,len(serial_data))):
                 if (filter_data != serial_data[2:serial_data.index("kg")]):
                    filter_data = serial_data[2:serial_data.index("kg")]
-                   new_data.set()
+                   scale_display.delete(1.0, END)
+                   floatval = float(filter_data) - glb_base_weight
+                   mydata = "{:10.3f}".format(floatval)
+                   mydata = mydata.rjust(13)
+                   scale_display.insert(END, mydata)
                    add_to_log(self, "SeriFilter", "#" + filter_data + "#")
                    print(filter_data)
                 else:
                    pass
             else:
                 pass
-        except serial.SerialException as err:
-            add_to_log(self, "Get data", err)
-            pass
         except NameError as err:
             add_to_log(self, "Get data", err)
             pass
@@ -1345,7 +1363,7 @@ if __name__ == '__main__':
     myargs = getopts(argv)
     glb_data_entry=0
     if ("-dataentry" in myargs.keys() ):
-        glb_data_entry=1
+        glb_data_entry=myargs["-dataentry"]
     if ("-location" in myargs.keys()):
         glb_locationid = myargs["-location"]
         vp_start_gui()
