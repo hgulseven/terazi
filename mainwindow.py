@@ -36,6 +36,7 @@ glb_SelectProductByBarcode ="Select productID, productName, productRetailPrice f
 glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 and locationID=%s order by salesID;"
 glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  typeOfCollection = 0 and locationID=%s order by salesID;"
 glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
+glb_screensize=1200
 glb_windows_env = 0 # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
@@ -655,11 +656,22 @@ class MainWindow(tk.Tk):
 
 
     def add_frame_buttons(self, active_served_customers, frame, list, page_count, func):
-        font11 = "-family {Segoe UI} -size 16 -weight bold -slant " \
-                 "roman -underline 0 -overstrike 0"
+        global glb_screensize
+        if glb_screensize == 800:
+            buttonwidth=19
+            buttonheight=2
+            row_size, col_size = 4, 2
+            font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
+                     "roman -underline 0 -overstrike 0"
+        else:
+            buttonwidth=24
+            buttonheight=2
+            row_size, col_size = 5, 2
+            font11 = "-family {Segoe UI} -size 16 -weight bold -slant " \
+                     "roman -underline 0 -overstrike 0"
+
         for child in frame.winfo_children():  # Clear frame contents whatever it is
             child.destroy()
-        row_size, col_size = 5, 2  # grid in the frame is 4 by 3
         lower_cnt = page_count * row_size * col_size  # calculate lower bound in the list
         while lower_cnt > len(list):  # if lower bound is more than list size adjust it
             page_count = page_count - 1
@@ -673,7 +685,7 @@ class MainWindow(tk.Tk):
             button = tk.Button(frame, text=obj.Name)
             button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
             button.configure(disabledforeground="#a3a3a3", font=font11, foreground="#000000")
-            button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=24, height=2,
+            button.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", width=buttonwidth, height=buttonheight,
                              wraplength=400)
             button.configure(command=lambda btn=button: func(btn))
             button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
@@ -686,7 +698,7 @@ class MainWindow(tk.Tk):
             button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9",
                              disabledforeground="#a3a3a3")
             button.configure(font=font11, foreground="#000000", highlightbackground="#d9d9d9", highlightcolor="black",
-                             pady="0", width=24, height=2)
+                             pady="0", width=buttonwidth, height=buttonheight)
             button.configure(wraplength=200)
             button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
         return page_count
@@ -703,11 +715,19 @@ class MainWindow(tk.Tk):
 
     def productssold_frame_def(self):
         global top
-        font12 = "-family {Segoe UI} -size 12 -weight bold -slant " \
+        if glb_screensize==800:
+            font12 = "-family {Segoe UI} -size 8 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
-        font10 = "-family {Segoe UI} -size 10 -weight bold -slant " \
+            font10 = "-family {Segoe UI} -size 8 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
-        font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
+            font9 = "-family {Segoe UI} -size 8 -weight bold -slant roman" \
+                " -underline 0 -overstrike 0"
+        else:
+            font12 = "-family {Segoe UI} -size 12 -weight bold -slant " \
+                 "roman -underline 0 -overstrike 0"
+            font10 = "-family {Segoe UI} -size 10 -weight bold -slant " \
+                 "roman -underline 0 -overstrike 0"
+            font9 = "-family {Segoe UI} -size 11 -weight bold -slant roman" \
                 " -underline 0 -overstrike 0"
         self.products_sold_frame.place(relx=0.0, rely=0.110, relheight=0.550, relwidth=0.350)
         self.products_sold_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9",
@@ -717,7 +737,6 @@ class MainWindow(tk.Tk):
         self.entry_products.place(relx=0.010, rely=0.02, relheight=0.84, relwidth=0.650)
         self.entry_products.configure(font=font10)
         self.entry_products.configure(takefocus="")
-
         self.entry_amount_sold=tk.Text(self.products_sold_frame);
         self.entry_amount_sold.tag_configure("right",justify=RIGHT)
         self.entry_amount_sold.tag_add("right",1.0,"end")
@@ -743,14 +762,21 @@ class MainWindow(tk.Tk):
 
     def functions_frame_def(self):
         global top
-        font11 = "-family {Segoe UI} -size 15 -weight bold -slant " \
+        global glb_screensize
+        if glb_screensize==800:
+            buttons_height = 38
+            buttons_width = 180
+            font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
+                 "roman -underline 0 -overstrike 0"
+        else:
+            buttons_height = 65
+            buttons_width = 250
+            font11 = "-family {Segoe UI} -size 15 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
 
         self.functions_frame.place(relx=0.0, rely=0.700, relheight=0.200, relwidth=0.994)
         self.functions_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9")
         self.functions_frame.configure(highlightbackground="#f0f0f0", width=795)
-        buttons_height = 65
-        buttons_width = 250
         self.btn_dara = tk.Button(self.functions_frame)
         self.btn_dara.configure(command=lambda btn=self.btn_dara: self.btn_dara_clicked())
         self.btn_dara.place(relx=0.013, rely=0.050, height=buttons_height, width=buttons_width)
@@ -1162,7 +1188,8 @@ class MainWindow(tk.Tk):
 
     def __init__(self, top=None):
         global filter_data
-
+        global glb_screensize
+        glb_screensize=top.winfo_screenwidth()
         w, h = top.winfo_screenwidth()/2, root.winfo_screenheight()
         top.geometry("%dx%d+0+0" % (w, h))
         top.attributes("-fullscreen", FALSE)
