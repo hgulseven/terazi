@@ -79,11 +79,12 @@ def add_to_log(self, function, err):
                the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
 
 class Product(object):
-    def __init__(self, productID=None, Name=None, price=None, teraziID=None):
+    def __init__(self, productID=None, Name=None, price=None, teraziID=None,productBarcodeID=None):
         self.productID = productID
         self.Name = Name
         self.price = price
         self.teraziID = teraziID
+        self.productBarcodeID=productBarcodeID
 
 
 class Customer(object):
