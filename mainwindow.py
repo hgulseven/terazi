@@ -41,7 +41,7 @@ glb_SelectCustomers = "Select distinct salesID from salesmodels where  saleDate=
 glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = 0 and locationID=%s order by salesID;"
 glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
 
-glb_windows_env = 1  # 1 Windows 0 Linux
+glb_windows_env = 0  # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
 glb_filter_data =""
