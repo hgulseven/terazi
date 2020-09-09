@@ -21,7 +21,7 @@ glb_user = "hakan"
 glb_password = "QAZwsx135"
 glb_locationid = ""
 # queries
-glb_GetTeraziProducts = "Select  TeraziID, productmodels.productID, productName, productRetailPrice, productBarcodeID from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"
+glb_GetTeraziProducts = "Select  TeraziID, productmodels.productID, productName, productRetailPrice from productmodels left outer join teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"
 glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
 glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels;"
 glb_SelectCounter ="select counter from salescounter where salesDate=%s and locationID=%s;"
@@ -36,7 +36,6 @@ glb_SelectProductByBarcode ="Select productID, productName, productRetailPrice f
 glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 and locationID=%s order by salesID;"
 glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  typeOfCollection = 0 and locationID=%s order by salesID;"
 glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
-glb_screensize=1200
 glb_windows_env = 0 # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
@@ -79,12 +78,11 @@ def add_to_log(self, function, err):
                the_file.write(currentDate.strftime("%Y-%m-%d %H:%M:%S")+ " "+function+" "+format(err)+"\n")
 
 class Product(object):
-    def __init__(self, productID=None, Name=None, price=None, teraziID=None,productBarcodeID=None):
+    def __init__(self, productID=None, Name=None, price=None, teraziID=None):
         self.productID = productID
         self.Name = Name
         self.price = price
         self.teraziID = teraziID
-        self.productBarcodeID=productBarcodeID
 
 
 class Customer(object):
@@ -439,7 +437,7 @@ def load_products(self, ID):
                 productObj.productID = row[1]
                 productObj.Name = row[2]
                 productObj.price = float(row[3])
-                productObj.productBarcodeID = row[4]
+                productObj.productBarcodeID=row[4]
                 glb_product_names.append(productObj)
             myCursor.close()
             conn.close()
