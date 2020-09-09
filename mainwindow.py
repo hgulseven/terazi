@@ -1372,7 +1372,7 @@ def get_data(self, scale_display):
         except TypeError as err:
             add_to_log("Get data", err.msg)
             pass
-        except UnicodeDecodeError:
+        except UnicodeDecodeError as err:
             add_to_log("Get data", err.msg)
             pass
         except ValueError as err:
