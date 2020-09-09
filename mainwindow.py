@@ -536,10 +536,9 @@ class load_tables:
             add_to_log("load_tables","DB error :"+e.msg)
 
 def maininit(gui, *args, **kwargs):
-    global w, top_level, rootor
+    global w, top_level, root
     w = gui
     top_level = top
-    root = top
 
 
 def vp_start_gui():
