@@ -1367,12 +1367,16 @@ def get_data(self, scale_display):
             else:
                 pass
         except NameError as err:
-            add_to_log("Get data", err)
+            add_to_log("Get data", err.msg)
             pass
         except TypeError as err:
-            add_to_log("Get data", err)
+            add_to_log("Get data", err.msg)
             pass
         except UnicodeDecodeError:
+            add_to_log("Get data", err.msg)
+            pass
+        except ValueError as err:
+            add_to_log("Get data", "glb_filter_data= "+glb_filter_data +"  error message "+ err.msg)
             pass
 
 def getopts(argv):
