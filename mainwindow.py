@@ -1337,6 +1337,18 @@ def connect(self, env, baud, port):
         return 0
     return 1
 
+
+def checkiffloat(strval):
+    x=['0','1','2','3','4','5','6','7','8','9','.',]
+    i=0
+    numericval=False
+    while i<len(strval) and strval[i] in x:
+        i=i+1
+    if i == len(strval):
+        numericval=True
+    return numericval
+
+
 def get_data(self, scale_display):
     """This function serves the purpose of collecting data from the serial object and storing
     the filtered data into a global variable.
@@ -1352,10 +1364,16 @@ def get_data(self, scale_display):
             serial_data = serial_data.rstrip('\r')
             serial_data = serial_data.rstrip('\n')
             if (serial_data[0:1] == '+') and (serial_data.find("kg",1,len(serial_data))):
-                if (glb_filter_data != serial_data[2:serial_data.index("kg")]):
-                   glb_filter_data = serial_data[2:serial_data.index("kg")]
+                if (glb_filter_data != serial_data[1:serial_data.index("kg")]):
+                   glb_filter_data = serial_data[1:serial_data.index("kg")]
                    scale_display.delete(1.0, END)
-                   floatval = float(glb_filter_data) - glb_base_weight
+                   floatval=0
+                   while not checkiffloat(glb_filter_data) and len(glb_filter_data) > 1:
+                       glb_filter_data = glb_filter_data[1:len(glb_filter_data)]
+                   if checkiffloat(glb_filter_data):
+                       floatval = float(glb_filter_data) - glb_base_weight
+                   else:
+                       floatval=0-glb_base_weight
                    mydata = "{:10.3f}".format(floatval)
                    mydata = mydata.rjust(13)
                    scale_display.insert(END, mydata)
@@ -1372,7 +1390,7 @@ def get_data(self, scale_display):
             add_to_log("Get data", err.msg)
             pass
         except UnicodeDecodeError as err:
-            add_to_log("Get data", err.msg)
+            exit
             pass
         except ValueError as err:
             add_to_log("Get data", "glb_filter_data= "+glb_filter_data +"  error message "+ err.msg)
