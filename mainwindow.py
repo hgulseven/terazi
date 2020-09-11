@@ -956,9 +956,15 @@ class MainWindow(tk.Tk):
         global glb_employees_selected
         global glb_customer_no
         global root
+        global glb_serialthread
 
         root.config(cursor="watch")
         root.update()
+        if glb_serialthread.is_alive() == False:
+            glb_serialthread = threading.Thread(target=get_data,
+                                                args=(self, self.scale_display,))
+            glb_serialthread.daemon = True
+            glb_serialthread.start()
         glb_sales.clear()
         glb_customer_no = 0
         self.update_products_sold()
