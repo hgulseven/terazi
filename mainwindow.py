@@ -1322,7 +1322,7 @@ def customer_window_def(CustomerWindow):
         CustomerWindow.products_sold_total.place(relx=0.830, rely=0.87, relheight=0.10, relwidth=0.15)
         CustomerWindow.products_sold_total.configure(font=font18, bg='dark red', fg='white')
 
-def connect(self, myport, baud ):
+def connect(self, baud, myport ):
     global glb_serial_object
 
     try:
@@ -1354,14 +1354,17 @@ def get_data(self, scale_display):
     global glb_serial_object
     global glb_filter_data
     glb_filter_data = ""
-    res = 1
+    res = 0
     i=0
     while not res and i< 5:
-        if glb_data_entry == 0:
-            if glb_windows_env:
-                res=connect(self, 'COM'+str(i), 9600)
-            else:
-                res=connect(self, 9600, '/dev/tty'+'USB'+str(i))
+        try:
+            if glb_data_entry == 0:
+                if glb_windows_env:
+                    res=connect(self, 'COM'+str(i), 9600)
+                else:
+                    res=connect(self, 9600, '/dev/tty'+'USB'+str(i))
+        except Exception as err:
+                pass
         i=i+1
     if res:
         while (1):
