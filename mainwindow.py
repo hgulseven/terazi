@@ -19,6 +19,8 @@ glb_user = "hakan"
 glb_password = "QAZwsx135"
 glb_locationid = ""
 glb_serial_object = None
+glb_serialthread = None
+
 w = None
 top_level=None
 root = None
@@ -1194,8 +1196,15 @@ class MainWindow(tk.Tk):
         global glb_employees_selected
         global glb_customer_no
         global glb_filter_data
+        global glb_serialthread
 
         if (glb_customer_no != 0):
+            if glb_serialthread.is_alive() == False:
+                glb_serialthread = threading.Thread(target=get_data,
+                                                    args=(self, self.scale_display,))
+                glb_serialthread.daemon = True
+                glb_serialthread.start()
+                time.sleep(2)
             salesObj = Sales()
             salesObj.Name = btn.cget("text")
             salesObj.salesID = glb_customer_no
@@ -1228,6 +1237,8 @@ class MainWindow(tk.Tk):
         super().__init__()
         global glb_screensize
         global glb_serial_object
+        global glb_serialthread
+
         glb_screensize=top.winfo_screenwidth()
         w, h = top.winfo_screenwidth()/2, root.winfo_screenheight()
         top.geometry("%dx%d+0+0" % (w, h))
@@ -1265,19 +1276,10 @@ class MainWindow(tk.Tk):
         self.cust_window.attributes("-fullscreen", True)
         self.cust_window.title("Müşteri Bilgi Ekranı")
         customer_window_def(self.cust_window)
-        res = 0
-        if glb_data_entry == 0:
-            if glb_windows_env:
-                res=connect(self, 1, 9600, '5')
-            else:
-                res=connect(self, 2, 9600, 'USB0')
-                if res==0:
-                    res=connect(self, 2, 9600, 'USB1')
-        if res == 1:
-            t1 = threading.Thread(target=get_data,
+        glb_serialthread = threading.Thread(target=get_data,
                                       args=(self, self.scale_display,))
-            t1.daemon = True
-            t1.start()
+        glb_serialthread.daemon = True
+        glb_serialthread.start()
 
 def customer_window_def(CustomerWindow):
         font18 = "-family {Segoe UI} -size 18 -slant " \
@@ -1320,22 +1322,16 @@ def customer_window_def(CustomerWindow):
         CustomerWindow.products_sold_total.place(relx=0.830, rely=0.87, relheight=0.10, relwidth=0.15)
         CustomerWindow.products_sold_total.configure(font=font18, bg='dark red', fg='white')
 
-def connect(self, env, baud, port):
+def connect(self, myport, baud ):
     global glb_serial_object
 
     try:
-        if env == 2:
-            glb_serial_object = serial.Serial(port='/dev/tty' + str(port), baudrate=baud)
-        elif env == 1:
-            glb_serial_object = serial.Serial('COM' + str(port), baud)
+            glb_serial_object = serial.Serial(port=myport, baudrate=baud)
     except serial.SerialException as msg:
-        if env == 2 or port == 'USB1':
-            """if windows give message. If linux and tested for USB1 then error else USB0 then test for USB1
-            """
-            messagebox.showinfo("Hata Mesajı", "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
-        add_to_log("Connect", "Seri Port Hatası")
-        return 0
-    return 1
+           messagebox.showinfo("Hata Mesajı", "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
+           add_to_log("Connect", "Seri Port Hatası")
+           return False
+    return True
 
 
 def checkiffloat(strval):
@@ -1358,43 +1354,51 @@ def get_data(self, scale_display):
     global glb_serial_object
     global glb_filter_data
     glb_filter_data = ""
-    while (1):
-        try:
-            serial_data = str(glb_serial_object.readline(), 'utf-8')
-            serial_data = serial_data.rstrip('\r')
-            serial_data = serial_data.rstrip('\n')
-            if (serial_data[0:1] == '+') and (serial_data.find("kg",1,len(serial_data))):
-                if (glb_filter_data != serial_data[1:serial_data.index("kg")]):
-                   glb_filter_data = serial_data[1:serial_data.index("kg")]
-                   scale_display.delete(1.0, END)
-                   floatval=0
-                   while not checkiffloat(glb_filter_data) and len(glb_filter_data) > 1:
+    res = 1
+    i=0
+    while not res and i< 5:
+        if glb_data_entry == 0:
+            if glb_windows_env:
+                res=connect(self, 'COM'+str(i), 9600)
+            else:
+                res=connect(self, 9600, '/dev/tty'+'USB'+str(i))
+        i=i+1
+    if res:
+        while (1):
+            try:
+                serial_data = str(glb_serial_object.readline(), 'utf-8')
+                serial_data = serial_data.rstrip('\r')
+                serial_data = serial_data.rstrip('\n')
+                if (serial_data[0:1] == '+') and (serial_data.find("kg",1,len(serial_data))):
+                    glb_filter_data = serial_data[1:serial_data.index("kg")]
+                    scale_display.delete(1.0, END)
+                    floatval=0
+                    while not checkiffloat(glb_filter_data) and len(glb_filter_data) > 1:
                        glb_filter_data = glb_filter_data[1:len(glb_filter_data)]
-                   if checkiffloat(glb_filter_data):
+                    if checkiffloat(glb_filter_data):
                        floatval = float(glb_filter_data) - glb_base_weight
-                   else:
+                    else:
                        floatval=0-glb_base_weight
-                   mydata = "{:10.3f}".format(floatval)
-                   mydata = mydata.rjust(13)
-                   scale_display.insert(END, mydata)
-                   add_to_log("SeriFilter", "#" + glb_filter_data + "#")
-                   print(glb_filter_data)
+                    mydata = "{:10.3f}".format(floatval)
+                    mydata = mydata.rjust(13)
+                    scale_display.insert(END, mydata)
+                    add_to_log("SeriFilter", "#" + glb_filter_data + "#")
+                    print(glb_filter_data)
                 else:
                    pass
-            else:
+            except NameError as err:
+                add_to_log("Get data", err.msg)
                 pass
-        except NameError as err:
-            add_to_log("Get data", err.msg)
-            pass
-        except TypeError as err:
-            add_to_log("Get data", err.msg)
-            pass
-        except UnicodeDecodeError as err:
-            exit
-            pass
-        except ValueError as err:
-            add_to_log("Get data", "glb_filter_data= "+glb_filter_data +"  error message "+ err.msg)
-            pass
+            except TypeError as err:
+                add_to_log("Get data", err.msg)
+                pass
+            except UnicodeDecodeError as err:
+                exit
+                pass
+            except ValueError as err:
+                add_to_log("Get data", "glb_filter_data= "+glb_filter_data +"  error message "+ err.msg)
+                pass
+
 
 def getopts(argv):
    opts = {}
