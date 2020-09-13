@@ -944,7 +944,7 @@ class MainWindow(tk.Tk):
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, "0")
         try:
-            resp = requests.get("http://"+glb_webHost+"/api/DataRefresh")
+            resp = requests.get("https://"+glb_webHost+"/api/DataRefresh")
         except Error as e:
             add_to_log("sendToCahsier","SignalRErr :"+e.msg)
         self.btn_cleardara_clicked()
