@@ -989,7 +989,7 @@ class MainWindow(tk.Tk):
         self.update_products_sold()
         self.update_products_sold_for_customer()
         self.product_frame_def()
-        resp = requests.get("http://"+glb_webHost+"/api/DataRefresh")
+        resp = requests.get("https://"+glb_webHost+"/api/DataRefresh",verify=False)
         root.config(cursor="")
 
     def call_back_customer_clicked(self):
