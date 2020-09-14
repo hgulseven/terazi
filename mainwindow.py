@@ -1279,7 +1279,7 @@ class MainWindow(tk.Tk):
         """"Customer view window definition """
         self.cust_window = tk.Toplevel(self.master)
         self.cust_window.geometry("%dx%d+1200+0" % (w, h))
-        self.cust_window.attributes("-fullscreen", True)
+        self.cust_window.attributes("-fullscreen", False)
         self.cust_window.title("Müşteri Bilgi Ekranı")
         customer_window_def(self.cust_window)
         glb_serialthread = threading.Thread(target=get_data,
