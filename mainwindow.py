@@ -1278,7 +1278,7 @@ class MainWindow(tk.Tk):
         """"Customer view window definition """
         self.cust_window = tk.Toplevel(self.master)
         self.cust_window.geometry("%dx%d+1200+0" % (w, h))
-        self.cust_window.attributes("-fullscreen", False)
+        self.cust_window.attributes("-fullscreen", True)
         self.cust_window.title("Müşteri Bilgi Ekranı")
         customer_window_def(self.cust_window)
         glb_serialthread = threading.Thread(target=get_data,
@@ -1374,12 +1374,12 @@ def get_data(self, scale_display):
     if res:
         while (1):
             try:
-                scale_display.insert(END, '-----')
                 serial_data = str(glb_serial_object.readline(), 'utf-8')
                 serial_data = serial_data.rstrip('\r')
                 serial_data = serial_data.rstrip('\n')
                 if (serial_data[0:1] == '+') and (serial_data.find("kg",1,len(serial_data))):
                     glb_filter_data = serial_data[1:serial_data.index("kg")]
+                    scale_display.insert(END, '0.000')
                     scale_display.delete(1.0, END)
                     floatval=0
                     while not checkiffloat(glb_filter_data) and len(glb_filter_data) > 1:
