@@ -542,7 +542,6 @@ def maininit(gui, *args, **kwargs):
     w = gui
     top_level = top
 
-
 def vp_start_gui():
     global w, root, top
     root = tk.Tk()
@@ -1240,7 +1239,7 @@ class MainWindow(tk.Tk):
             self.message_box_text.insert(END, "Yeni Müşteri Seçilmeden Ürün Seçimi Yapılamaz")
 
     def __init__(self, top=None):
-        super().__init__()
+        '''super().__init__()'''
         global glb_screensize
         global glb_serial_object
         global glb_serialthread
@@ -1375,6 +1374,7 @@ def get_data(self, scale_display):
     if res:
         while (1):
             try:
+                scale_display.insert(END, '-----')
                 serial_data = str(glb_serial_object.readline(), 'utf-8')
                 serial_data = serial_data.rstrip('\r')
                 serial_data = serial_data.rstrip('\n')
