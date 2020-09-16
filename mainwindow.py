@@ -663,7 +663,8 @@ class MainWindow(tk.Tk):
         if get_product_based_on_barcod(textdata, salesObj):
             glb_sales.append(salesObj)
         self.update_products_sold()
-        self.update_products_sold_for_customer()
+        if glb_customer_window == 1:
+            self.update_products_sold_for_customer()
         root.config(cursor="")
 
 
@@ -924,7 +925,8 @@ class MainWindow(tk.Tk):
         sales_load(glb_customer_no, -1)
         self.product_frame_def()
         self.update_products_sold()
-        self.update_products_sold_for_customer()
+        if glb_customer_window==1:
+            self.update_products_sold_for_customer()
         root.config(cursor="")
 
     def btn_send_cashier_clicked(self):
@@ -938,7 +940,8 @@ class MainWindow(tk.Tk):
         sales_save(0)
         glb_sales.clear()
         self.update_products_sold()
-        self.update_products_sold_for_customer()
+        if glb_customer_window==1:
+            self.update_products_sold_for_customer()
         glb_customer_no = 0
         glb_sales_line_id = 1
         self.customer_no.delete('1.0', END)
@@ -968,7 +971,8 @@ class MainWindow(tk.Tk):
         glb_sales.clear()
         glb_customer_no = 0
         self.update_products_sold()
-        self.update_products_sold_for_customer()
+        if glb_customer_window ==1:
+            self.update_products_sold_for_customer()
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
         self.employee_frame_def()
@@ -987,7 +991,8 @@ class MainWindow(tk.Tk):
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
         self.update_products_sold()
-        self.update_products_sold_for_customer()
+        if glb_customer_window==1:
+            self.update_products_sold_for_customer()
         self.product_frame_def()
         resp = requests.get("https://"+glb_webHost+"/api/DataRefresh",verify=False)
         root.config(cursor="")
@@ -1094,7 +1099,8 @@ class MainWindow(tk.Tk):
             glb_sales.pop(-1)
             glb_sales_line_id = glb_sales_line_id -1
             self.update_products_sold()
-            self.update_products_sold_for_customer()
+            if glb_customer_window==1:
+                self.update_products_sold_for_customer()
         root.config(cursor="")
 
     def checkreyon(self, event: object):
