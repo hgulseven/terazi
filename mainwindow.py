@@ -18,6 +18,7 @@ glb_database = "order_and_sales_management"
 glb_user = "hakan"
 glb_password = "QAZwsx135"
 glb_locationid = ""
+glb_customer_window = 0
 glb_serial_object = None
 glb_serialthread = None
 
@@ -1234,7 +1235,8 @@ class MainWindow(tk.Tk):
             salesObj.typeOfCollection = 0
             glb_sales.append(salesObj)
             self.update_products_sold()
-            self.update_products_sold_for_customer()
+            if glb_customer_window==1:
+                self.update_products_sold_for_customer()
         else:
             self.message_box_text.insert(END, "Yeni Müşteri Seçilmeden Ürün Seçimi Yapılamaz")
 
@@ -1276,11 +1278,12 @@ class MainWindow(tk.Tk):
         self.paging_frame_def()
         self.productssold_frame_def()
         """"Customer view window definition """
-        self.cust_window = tk.Toplevel(self.master)
-        self.cust_window.geometry("%dx%d+1200+0" % (w, h))
-        self.cust_window.attributes("-fullscreen", True)
-        self.cust_window.title("Müşteri Bilgi Ekranı")
-        customer_window_def(self.cust_window)
+        if glb_customer_window==1:
+            self.cust_window = tk.Toplevel(self.master)
+            self.cust_window.geometry("%dx%d+1200+0" % (w, h))
+            self.cust_window.attributes("-fullscreen", True)
+            self.cust_window.title("Müşteri Bilgi Ekranı")
+            customer_window_def(self.cust_window)
         glb_serialthread = threading.Thread(target=get_data,
                                       args=(self, self.scale_display,))
         glb_serialthread.daemon = True
@@ -1425,6 +1428,8 @@ if __name__ == '__main__':
     glb_data_entry=0
     if ("-dataentry" in myargs.keys() ):
         glb_data_entry=myargs["-dataentry"]
+    if ("-customerwindow" in myargs.keys()):
+        glb_customer_window=myargs["-customerwindow"]
     if ("-location" in myargs.keys()):
         glb_locationid = myargs["-location"]
         vp_start_gui()
