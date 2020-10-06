@@ -4,13 +4,23 @@ import threading
 import time
 import tkinter as tk
 from datetime import datetime
+from io import BytesIO
 from tkinter import *
 from tkinter import messagebox
 from tkinter.ttk import *
-import mysql.connector
 import requests
 import serial
-from mysql.connector import Error
+import pymysql
+from escpos.printer import Usb
+import usb.core
+import usb.util
+import usb.backend.libusb1
+import barcode
+from barcode.writer import ImageWriter
+from barcode import EAN13
+import PIL
+from PIL import Image
+
 """Connection data"""
 glb_host = "192.168.1.45"
 glb_webHost = "192.168.1.45"
@@ -33,18 +43,21 @@ glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
 glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels;"
 glb_SelectCounter = "select counter from salescounter where salesDate=%s and locationID=%s;"
 glb_UpdateCounter = "Update salescounter set counter=%s where salesDate=%s and locationID=%s;"
-glb_InsertCounter = "Insert into salescounter (salesDate, counter,locationID) values (%s,%s,%s);"
-glb_UpdateSales = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s, locationID=%s,dara=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
+glb_InsertCounter = "insert into salescounter (salesDate, counter,locationID) values (%s,%s,%s);"
+glb_UpdateSales = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s, locationID=%s,dara=%s,productBarcodeID=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
 glb_SelectSalesLineExists = "select count(*) from salesmodels where salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
-glb_UpdateSalesLine = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s,locationID=%s,dara=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
-glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID,dara) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
-glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection,dara from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s and locationID=%s;"
+glb_UpdateSalesLine = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s,locationID=%s,dara=%s,productBarcodeID=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
+glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID,dara,productBarcodeID) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
+glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection,dara, salesmodels.productBarcodeID from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s and locationID=%s;"
 glb_SelectProductByBarcode = "Select productID, productName, productRetailPrice from productmodels where productBarcodeID=%s;"
 glb_SelectCustomers = "Select distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = -1 and locationID=%s order by salesID;"
 glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = 0 and locationID=%s order by salesID;"
 glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
-
-glb_windows_env = 0  # 1 Windows 0 Linux
+glb_getBarcodeID ="SELECT barcodeID FROM order_and_sales_management.packagedproductsbarcodes where recstatus=0 LIMIT 1;"
+glb_update_barcode_as_used = "update order_and_sales_management.packagedproductsbarcodes set recstatus=1 where barcodeID=%s;"
+glb_insert_packedprod_items = "insert into order_and_sales_management.packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, ProductID,recStatus,recDate) values(%s,%s,%s,%s,%s,%s);"
+glb_get_packed_details = "SELECT packagedproductdetailsmodel.productID, amount, productName, productRetailPrice FROM order_and_sales_management.packagedproductdetailsmodel left outer join  productmodels on(packagedproductdetailsmodel.productID=productmodels.productID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
+glb_windows_env = 1  # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
 glb_filter_data =""
@@ -90,6 +103,7 @@ def add_to_log(function, err):
         the_file.write(current_date.strftime("%Y-%m-%d %H:%M:%S") + " " + function + " " + format(err) + "\n")
     the_file.close()
 
+
 class Product(object):
     def __init__(self, productID=None, Name=None, price=None, teraziID=None, productBarcodeID=None):
         self.productID = productID
@@ -132,11 +146,11 @@ class SalesCounter(object):
         global glb_locationid
 
         try:
-            conn = mysql.connector.connect(host=glb_host,
+            conn = pymysql.connect(host=glb_host,
                                            database=glb_database,
                                            user=glb_user,
                                            password=glb_password)  # pyodbc.connect(glb_connection_str)
-            if conn.is_connected():
+            if conn.open:
                 myCursor = conn.cursor()
                 my_date = datetime.now()
                 myCursor.execute(glb_SelectCounter, (my_date.strftime('%Y-%m-%d'), glb_locationid,))
@@ -155,8 +169,8 @@ class SalesCounter(object):
                 conn.close()
             else:
                 add_to_log("get_Counter", "Bağlantı Hatası")
-        except Error as e:
-            add_to_log("get_Counter", "DBError :" + e.msg)
+        except pymysql.Error as e:
+            add_to_log("get_Counter", "DBError :" + e.args[1])
         return self.counter
 
 
@@ -197,23 +211,94 @@ def sales_update(srcTypeOfCollection, destTypeOfCollection):
     global glb_locationid
 
     try:
-        conn = mysql.connector.connect(host=glb_host,
+        conn = pymysql.connect(host=glb_host,
                                        database=glb_database,
                                        user=glb_user,
                                        password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.is_connected():
+        if conn.open:
             myCursor = conn.cursor()
             for salesObj in glb_sales:
                 my_date = datetime.now()
                 saleTime = my_date.strftime('%Y-%m-%d %H:%M:%S.%f')
-                myCursor.execute(glb_UpdateSales, (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.productID, salesObj.amount, destTypeOfCollection, saleTime, glb_locationid, glb_base_weight, salesObj.salesID, salesObj.salesLineID, srcTypeOfCollection, salesObj.saleDate, glb_locationid,))
+                myCursor.execute(glb_UpdateSales, (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.productID, salesObj.amount, destTypeOfCollection, saleTime, glb_locationid, glb_base_weight,salesObj.productBarcodeID, salesObj.salesID, salesObj.salesLineID, srcTypeOfCollection, salesObj.saleDate, glb_locationid,))
             conn.commit()
             myCursor.close()
             conn.close()
         else:
             add_to_log("sales_Update", "Bağlantı Hatası")
-    except Error as e:
-        add_to_log("sales_update", "DbError :"+e.msg)
+    except pymysql.Error as e:
+        add_to_log("sales_update", "DbError :"+e.args[1])
+
+def add_prepared_package(self):
+#    /* Get barcode ID for prepared package */
+        try:
+            conn = pymysql.connect(host=glb_host,
+                                       database=glb_database,
+                                       user=glb_user,
+                                       password=glb_password)  # pyodbc.connect(glb_connection_str)
+
+        except pymysql.Error as e:
+            add_to_log("add_prepared_package", "DBHatası :" + e.args[1])
+#   /* add products to prepered packaged table */
+        if conn.open:
+            try:
+                myCursor = conn.cursor()
+                myCursor.execute(glb_getBarcodeID,())
+                row = myCursor.fetchone()
+                if row != NONE:
+                    barcodeID=row[0]
+                    myCursor.execute(glb_update_barcode_as_used,(barcodeID,))
+                    conn.commit()
+                    lineNo=1
+                    for salesObj in glb_sales:
+                        myCursor.execute(glb_insert_packedprod_items,(
+                            barcodeID, lineNo, salesObj.amount, salesObj.productID,"0",datetime.now(),))
+                        lineNo=lineNo+1
+                    conn.commit()
+                    myCursor.close()
+                    conn.close()
+                    print_receipt(barcodeID)
+                    glb_sales.clear()
+                    self.update_products_sold()
+                    if glb_customer_window == 1:
+                        self.update_products_sold_for_customer()
+                    self.btn_cleardara_clicked()
+                    self.new_customer_clicked()
+                else:
+                    add_to_log("add_prepared_package", "Paketli ürün için barkod kalmadı.")
+            except pymysql.Error as e:
+                add_to_log("add_prepared_package", "DBHatası :" + e.args[1])
+
+def print_receipt(barcod_to_be_printed):
+#    dev = usb.core.find(idVendor=0x0416, idProduct=0x5011)
+    p = Usb(0x0416, 0x5011, 0, 0x81, 0x03)
+    p.cut()
+    p.charcode("Turkish")
+    p.text("\n")
+    p._raw(b'\x1b\x44\x01\x12\x19\x00\n')
+    toplam=0
+    for salesObj in glb_sales:
+        strAmount = "{:6.3f}".format(salesObj.amount)
+        strAmount = strAmount.rjust(6)
+        tutar=salesObj.amount*salesObj.retailPrice
+        toplam=toplam+tutar
+        strTutar = "{:7.2f}".format(tutar)
+        strTutar = strTutar.rjust(7)
+        p.text("\x09 "+salesObj.Name[0:15]+"\x09"+strAmount+"\x09"+strTutar+"\n")
+    strToplam="{:7.2f}".format(toplam)
+    strToplam=strToplam.rjust(7)
+    p.text("\x09\x09\x09" + " ______\n")
+    p.text("\x09"+" Toplam"+"\x09\x09"+strToplam)
+    p.text("\n")
+    with open('temp.jpeg', 'wb') as f:
+        EAN13(barcod_to_be_printed, writer=ImageWriter()).write(f)
+    to_be_resized=Image.open("temp.jpeg")
+    newSize=(300,70)
+    resized=to_be_resized.resize(newSize,resample=PIL.Image.NEAREST)
+    p.image(resized, impl='bitImageColumn')
+    p.text("\n"+barcod_to_be_printed)
+    p.cut()
+
 
 
 def sales_hard_delete( salesID):
@@ -221,11 +306,11 @@ def sales_hard_delete( salesID):
     global glb_locationid
 
     try:
-        conn = mysql.connector.connect(host=glb_host,
+        conn = pymysql.connect(host=glb_host,
                                        database=glb_database,
                                        user=glb_user,
                                        password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.is_connected():
+        if conn.open:
             myCursor = conn.cursor()
             my_date = datetime.now()
             saleDate = my_date.strftime('%Y-%m-%d')
@@ -235,8 +320,8 @@ def sales_hard_delete( salesID):
             conn.close()
         else:
             add_to_log("sales_hard_delete","Bağlantı Hatası")
-    except Error as e:
-        add_to_log("sales_hard_delete","DBHatası :"+e.msg)
+    except pymysql.Error as e:
+        add_to_log("sales_hard_delete","DBHatası :"+e.args[1])
 
 
 def sales_save(typeOfCollection):
@@ -251,33 +336,33 @@ def sales_save(typeOfCollection):
     global glb_base_weight
 
     try:
-        conn = mysql.connector.connect(host=glb_host,
+        conn = pymysql.connect(host=glb_host,
                                        database=glb_database,
                                        user=glb_user,
                                        password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.is_connected():
+        if conn.open:
             myCursor = conn.cursor()
             for salesObj in glb_sales:
                 myCursor.execute(glb_SelectSalesLineExists,
                                  (salesObj.salesID,salesObj.salesLineID, salesObj.saleDate,glb_locationid))
-                number_of_rows = myCursor.fetchall()[0][0]
-                if number_of_rows > 0:
+                rows = myCursor.fetchall()
+                if rows[0][0] > 0:
                     myCursor.execute(glb_UpdateSalesLine,
                                      (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,
-                                     salesObj.productID,salesObj.amount, typeOfCollection,glb_locationid,glb_base_weight, salesObj.personelID,
+                                     salesObj.productID,salesObj.amount, typeOfCollection,glb_locationid,glb_base_weight,salesObj.productBarcodeID, salesObj.personelID,
                                      salesObj.salesID,salesObj.salesLineID,salesObj.saleDate,glb_locationid))
                 else:
                     paidAmount=0.0
                     myCursor.execute(glb_InsertSalesLine,
                                      (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID,
-                                      salesObj.personelID, salesObj.productID,salesObj.amount,paidAmount,typeOfCollection,glb_locationid,glb_base_weight))
+                                      salesObj.personelID, salesObj.productID,salesObj.amount,paidAmount,typeOfCollection,glb_locationid,glb_base_weight,salesObj.productBarcodeID))
             conn.commit()
             myCursor.close()
             conn.close()
         else:
             add_to_log("sales_save","Bağlantı Hatası")
-    except Error as e:
-        add_to_log("sales_save","DBHatası :"+e.msg)
+    except pymysql.Error as e:
+        add_to_log("sales_save","DBHatası :"+e.args[1])
 
 
 def sales_load(salesID, typeOfCollection):
@@ -293,11 +378,11 @@ def sales_load(salesID, typeOfCollection):
     global glb_base_weight
 
     try:
-        conn = mysql.connector.connect(host=glb_host,
+        conn = pymysql.connect(host=glb_host,
                                        database=glb_database,
                                        user=glb_user,
                                        password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.is_connected():
+        if conn.open:
             myCursor = conn.cursor()
             myCursor.execute(glb_SelectSales,
                              (salesID,typeOfCollection,glb_locationid))
@@ -316,6 +401,7 @@ def sales_load(salesID, typeOfCollection):
                 salesObj.Name = row[7]
                 salesObj.typeOfCollection = row[8]
                 salesObj.dara=row[9]
+                salesObj.productBarcodeID=[10]
                 glb_base_weight = salesObj.dara
                 glb_sales.append(salesObj)
                 glb_sales_line_id = glb_sales_line_id + 1
@@ -323,8 +409,8 @@ def sales_load(salesID, typeOfCollection):
             conn.close()
         else:
             add_to_log("sales_load","Bağlantı Hatası")
-    except Error as e:
-        add_to_log("sales_load","DBHatası :"+e.msg)
+    except pymysql.Error as e:
+        add_to_log("sales_load","DBHatası :"+e.args[1])
 
 
 def get_product_based_on_barcod(prdct_barcode, salesObj):
@@ -340,11 +426,11 @@ def get_product_based_on_barcod(prdct_barcode, salesObj):
 
     retval=1
     try:
-        conn = mysql.connector.connect(host=glb_host,
+        conn = pymysql.connect(host=glb_host,
                                        database=glb_database,
                                        user=glb_user,
                                        password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.is_connected():
+        if conn.open:
             myCursor = conn.cursor()
             myCursor.execute(glb_SelectProductByBarcode,
                              (prdct_barcode,))
@@ -360,6 +446,7 @@ def get_product_based_on_barcod(prdct_barcode, salesObj):
                     salesObj.Name = row[1]
                     salesObj.retailPrice = row[2]
                     salesObj.typeOfCollection = 0
+                    salesObj.productBarcodeID=prdct_barcode
             else:
                 add_to_log("get_product_based_on_barcod",prdct_barcode + " kayıt Buulunamadı")
                 retval = 0
@@ -368,8 +455,8 @@ def get_product_based_on_barcod(prdct_barcode, salesObj):
         else:
             add_to_log("get_product_based_on_barcod","Bağlantı Hatası")
             retval = 0
-    except Error as e:
-        add_to_log("get_product_based_on_barcod","DB Hatası :"+e.msg)
+    except pymysql.Error as e:
+        add_to_log("get_product_based_on_barcod","DB Hatası :"+e.args[1])
         retval = 0
     return retval
 
@@ -384,11 +471,11 @@ def get_served_customers():
 
     try:
         glb_active_served_customers.clear()
-        conn = mysql.connector.connect(host=glb_host,
+        conn = pymysql.connect(host=glb_host,
                                        database=glb_database,
                                        user=glb_user,
                                        password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.is_connected():
+        if conn.open:
 
             myCursor = conn.cursor()
             my_date = datetime.now()
@@ -403,8 +490,8 @@ def get_served_customers():
             conn.close()
         else:
             add_to_log("get_served_Customers","Bağlantı Hatası")
-    except Error as e:
-        add_to_log("get_served_Customers","DB Hatası :"+e.msg)
+    except pymysql.Error as e:
+        add_to_log("get_served_Customers","DB Hatası :"+e.args[1])
 
 
 def get_customers_on_cashier():
@@ -417,11 +504,11 @@ def get_customers_on_cashier():
 
     try:
         glb_customers_on_cashier.clear()
-        conn = mysql.connector.connect(host=glb_host,
+        conn = pymysql.connect(host=glb_host,
                                        database=glb_database,
                                        user=glb_user,
                                        password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.is_connected():
+        if conn.open:
             myCursor = conn.cursor()
             my_date = datetime.now()
             saleDate = my_date.strftime('%Y-%m-%d')
@@ -435,8 +522,8 @@ def get_customers_on_cashier():
             conn.close()
         else:
             add_to_log("get_customers_on_cashier","Bağlantı Hatası")
-    except Error as e:
-        add_to_log("get_customers_on_cashier","DB Hatası : "+e.msg)
+    except pymysql.Error as e:
+        add_to_log("get_customers_on_cashier","DB Hatası : "+e.args[1])
 
 
 def load_products(ID):
@@ -446,11 +533,11 @@ def load_products(ID):
     global glb_password
 
     try:
-        conn = mysql.connector.connect(host = glb_host,
+        conn = pymysql.connect(host = glb_host,
                                        database = glb_database,
                                        user = glb_user,
                                        password = glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.is_connected():
+        if conn.open:
             myCursor = conn.cursor()
             myCursor.execute(glb_GetTeraziProducts, (ID,))
             rows = myCursor.fetchall()
@@ -467,23 +554,23 @@ def load_products(ID):
             conn.close()
         else:
             add_to_log( "load_products", "Bağlantı hatası")#Connect,on Error
-    except Error as e:
-        add_to_log("load_products", "DB Error :"+e.msg) #any error log it
+    except pymysql.Error as e:
+        add_to_log("load_products", "DB Error :"+e.args[1]) #any error log it
 
 def wait_for_sql():
     db_connected = FALSE
     while not db_connected:
         try:
-            conn =  mysql.connector.connect(host=glb_host,
+            conn =  pymysql.connect(host=glb_host,
                                             database='order_and_sales_management',
                                             user='hakan',
                                             password='QAZwsx135') # pyodbc.connect(glb_connection_str)
-            if conn.is_connected():
+            if conn.open:
                 db_connected = TRUE
             conn.close()
-        except Error as e:
-            add_to_log("wait_for_sql", e.msg)
-            messagebox.showinfo("Hata Mesajı", "Sunucu ile bağlantı Kurulamadı "+ e.msg)
+        except pymysql.Error as e:
+            add_to_log("wait_for_sql", e.args[1])
+            messagebox.showinfo("Hata Mesajı", "Sunucu ile bağlantı Kurulamadı "+ e.args[1])
             db_connected = FALSE
             time.sleep(2)
 
@@ -509,11 +596,11 @@ class load_tables:
         glb_base_weight = 0
         glb_customer_no = 0
         try:
-            conn = mysql.connector.connect(host = glb_host,
+            conn = pymysql.connect(host = glb_host,
                                            database = glb_database,
                                            user = glb_user,
                                            password = glb_password)  # pyodbc.connect(glb_connection_str)
-            if conn.is_connected():
+            if conn.open:
                 myCursor = conn.cursor()
                 myCursor.execute(glb_SelectTerazi)
                 rows = myCursor.fetchall()
@@ -535,8 +622,8 @@ class load_tables:
                 conn.close()
             else:
                 add_to_log("load_tables","Bağlantı Hatası")
-        except Error as e:
-            add_to_log("load_tables","DB error :"+e.msg)
+        except pymysql.Error as e:
+            add_to_log("load_tables","DB error :"+e.args[1])
 
 def maininit(gui, *args, **kwargs):
     global w, top_level, root
@@ -652,6 +739,8 @@ class MainWindow(tk.Tk):
 
     def read_barcode(self, event):
         global glb_sales
+        global glb_customer_no
+        global glb_sales_line_id
         global root
         root.config(cursor="watch")
         root.update()
@@ -659,9 +748,36 @@ class MainWindow(tk.Tk):
         textdata = textdata.rstrip("\n")
         textdata = textdata.lstrip("\n")
         self.prdct_barcode.delete('1.0', END)
-        salesObj = Sales()
-        if get_product_based_on_barcod(textdata, salesObj):
-            glb_sales.append(salesObj)
+        product_code=int(textdata[9:13])
+        if product_code >= 9950 and product_code <= 9970:
+            try:
+                conn = pymysql.connect(host=glb_host,
+                                   database=glb_database,
+                                   user=glb_user,
+                                   password=glb_password)  # pyodbc.connect(glb_connection_str)
+                if conn.open:
+                    myCursor = conn.cursor()
+                    myCursor.execute(glb_get_packed_details,(textdata,))
+                    rows = myCursor.fetchall()
+                    for row in rows:
+                        salesObj=Sales()
+                        salesObj.salesID=glb_customer_no
+                        salesObj.salesLineID = glb_sales_line_id
+                        glb_sales_line_id = glb_sales_line_id + 1
+                        salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
+                        salesObj.productID = row[0]
+                        salesObj.amount = row[1]
+                        salesObj.Name = row[2]
+                        salesObj.retailPrice = row[3]
+                        salesObj.typeOfCollection = 0
+                        salesObj.productBarcodeID=textdata
+                        glb_sales.append(salesObj)
+            except pymysql.Error as e:
+                add_to_log("readBarcode","DBerror :"+e.args[1])
+        else:
+            salesObj = Sales()
+            if get_product_based_on_barcod(textdata, salesObj):
+                glb_sales.append(salesObj)
         self.update_products_sold()
         if glb_customer_window == 1:
             self.update_products_sold_for_customer()
@@ -679,7 +795,7 @@ class MainWindow(tk.Tk):
         else:
             buttonwidth=24
             buttonheight=2
-            row_size, col_size = 5, 2
+            row_size, col_size = 4, 2
             btn_font = "-family {Segoe UI} -size 16 -weight bold -slant " \
                      "roman -underline 0 -overstrike 0"
 
@@ -769,88 +885,106 @@ class MainWindow(tk.Tk):
         self.entry_sum.tag_add("right",1.0,"end")
         self.entry_sum.place(relx=0.790, rely=0.88, relheight=0.10, relwidth=0.190)
 
+    def set_button_configuration(self,button,btn_font,cmd,txt):
+        button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
+        button.configure(disabledforeground="#a3a3a3", font=btn_font, foreground="#000000",highlightbackground="#d9d9d9", highlightcolor="black")
+        button.configure(pady="0", text = txt, command = cmd)
+
     def functions_frame_def(self):
         global top
         global glb_screensize
         if glb_screensize==800:
             buttons_height = 38
-            buttons_width = 180
+            buttons_width = 150
+            buttons_start=20
+            buttons_distance = 15
             btn_font = "-family {Segoe UI} -size 12 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         else:
             buttons_height = 65
-            buttons_width = 250
+            buttons_width = 200
+            buttons_x_start = 35
+            buttons_x_distance = 30
+            buttons_y_start =10
+            buttons_y_distance = 10
             btn_font = "-family {Segoe UI} -size 15 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
-
-        self.functions_frame.place(relx=0.0, rely=0.700, relheight=0.200, relwidth=0.994)
+        self.functions_frame.place(relx=0.001, rely=0.700, relheight=0.200, relwidth=0.980)
         self.functions_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9")
-        self.functions_frame.configure(highlightbackground="#f0f0f0", width=795)
+        self.functions_frame.configure(highlightbackground="#f0f0f0")
+        # Dara button definition
         self.btn_dara = tk.Button(self.functions_frame)
-        self.btn_dara.configure(command=lambda btn=self.btn_dara: self.btn_dara_clicked())
-        self.btn_dara.place(relx=0.013, rely=0.050, height=buttons_height, width=buttons_width)
-        self.btn_dara.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
-        self.btn_dara.configure(disabledforeground="#a3a3a3", font=btn_font, foreground="#000000")
-        self.btn_dara.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0", text='''Dara''',
-                                width=20)
+        self.set_button_configuration(self.btn_dara,btn_font,lambda btn=self.btn_dara: self.btn_dara_clicked(),"Dara")
+        buttons_x_count=0
+        buttons_y_count =0
+        xpos=buttons_x_start+buttons_x_count*buttons_x_distance+buttons_x_count*buttons_width
+        ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
+        self.btn_dara.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
 
+        #change user button definition
         self.btn_changeuser = tk.Button(self.functions_frame)
-        self.btn_changeuser.configure(command=lambda btn=self.btn_changeuser: self.btn_change_user_clicked())
-        self.btn_changeuser.place(relx=0.264, rely=0.050, height=buttons_height, width=buttons_width)
-        self.btn_changeuser.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
-        self.btn_changeuser.configure(disabledforeground="#a3a3a3", font=btn_font, foreground="#000000")
-        self.btn_changeuser.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0",
-                                      text='''Çalışan Değiştir''', width=20)
+        self.set_button_configuration(self.btn_changeuser,btn_font,lambda btn=self.btn_changeuser: self.btn_change_user_clicked(),"Çalışan Değiştir")
+        buttons_x_count=buttons_x_count+1
+        xpos=buttons_x_start+buttons_x_count*buttons_x_distance+buttons_x_count*buttons_width
+        ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
+        self.btn_changeuser.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
 
+        # call back customer button definition
         self.btn_call_back_customer = tk.Button(self.functions_frame)
-        self.btn_call_back_customer.configure(
-            command=lambda btn=self.btn_call_back_customer: self.call_back_customer_clicked())
-        self.btn_call_back_customer.place(relx=0.516, rely=0.050, height=buttons_height, width=buttons_width)
-        self.btn_call_back_customer.configure(activebackground="#ececec", activeforeground="#000000",
-                                              background="#d9d9d9")
-        self.btn_call_back_customer.configure(disabledforeground="#a3a3a3", font=btn_font, foreground="#000000")
-        self.btn_call_back_customer.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0",
-                                              text='''Müşteri Geri Çağır''', width=20)
+        self.set_button_configuration(self.btn_call_back_customer,btn_font,lambda btn=self.btn_call_back_customer: self.call_back_customer_clicked(),"Müşteri Geri Çağır")
+        buttons_x_count=buttons_x_count+1
+        xpos=buttons_x_start+buttons_x_count*buttons_x_distance+buttons_x_count*buttons_width
+        ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
+        self.btn_call_back_customer.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
 
+        #cancel sale button definition
         self.btn_cancelsale = tk.Button(self.functions_frame)
-        self.btn_cancelsale.configure(command=lambda btn=self.btn_cancelsale: self.btn_cancelsale_clicked())
-        self.btn_cancelsale.place(relx=0.767, rely=0.050, height=buttons_height, width=buttons_width)
-        self.btn_cancelsale.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
-        self.btn_cancelsale.configure(disabledforeground="#a3a3a3", font=btn_font, foreground="#000000")
-        self.btn_cancelsale.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0",
-                                      text='''Satışı İptal Et''', width=20)
+        self.set_button_configuration(self.btn_cancelsale,btn_font,lambda btn=self.btn_cancelsale: self.btn_cancelsale_clicked(),"Satış İptal")
+        buttons_x_count=buttons_x_count+1
+        xpos=buttons_x_start+buttons_x_count*buttons_x_distance+buttons_x_count*buttons_width
+        ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
+        self.btn_cancelsale.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
+
+        # add packed product button definition
+        self.btn_addpackedproduct = tk.Button(self.functions_frame)
+        self.set_button_configuration(self.btn_addpackedproduct,btn_font,lambda btn=self.btn_addpackedproduct: self.btn_addpackedproduct_clicked(),"Tepsi Ekle")
+        buttons_x_count=buttons_x_count+1
+        xpos=buttons_x_start+buttons_x_count*buttons_x_distance+buttons_x_count*buttons_width
+        ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
+        self.btn_addpackedproduct.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
+
+        buttons_y_count=buttons_y_count+1
+        buttons_x_count=0
 
         self.btn_cleardara = tk.Button(self.functions_frame)
-        self.btn_cleardara.configure(command=lambda btn=self.btn_cleardara: self.btn_cleardara_clicked())
-        self.btn_cleardara.place(relx=0.013, rely=0.500, height=buttons_height, width=buttons_width)
-        self.btn_cleardara.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
-        self.btn_cleardara.configure(disabledforeground="#a3a3a3", font=btn_font, foreground="#000000",
-                                     text='''Darayı Temizle''', width=20)
+        self.set_button_configuration(self.btn_cleardara,btn_font,lambda btn=self.btn_cleardara: self.btn_cleardara_clicked(),"Darayı Temizle")
+        xpos=buttons_x_start+buttons_x_count*buttons_x_distance+buttons_x_count*buttons_width
+        ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
+        self.btn_cleardara.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
 
         self.btn_savesale = tk.Button(self.functions_frame)
-        self.btn_savesale.configure(command=lambda btn=self.btn_savesale: self.btn_savesale_clicked())
-        self.btn_savesale.place(relx=0.264, rely=0.500, height=buttons_height, width=buttons_width)
-        self.btn_savesale.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
-        self.btn_savesale.configure(disabledforeground="#a3a3a3", font=btn_font, foreground="#000000",
-                                    text='''Satışı Kaydet''', width=20)
+        self.set_button_configuration(self.btn_savesale,btn_font,lambda btn=self.btn_savesale: self.btn_savesale_clicked(),"Satışı Kaydet")
+        buttons_x_count=buttons_x_count+1
+        xpos=buttons_x_start+buttons_x_count*buttons_x_distance+buttons_x_count*buttons_width
+        ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
+        self.btn_savesale.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
 
         self.btn_sendcashier = tk.Button(self.functions_frame)
-        self.btn_sendcashier.configure(command=lambda btn=self.btn_sendcashier: self.btn_send_cashier_clicked())
-        self.btn_sendcashier.place(relx=0.516, rely=0.500, height=buttons_height, width=buttons_width)
-        self.btn_sendcashier.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9")
-        self.btn_sendcashier.configure(disabledforeground="#a3a3a3", font=btn_font, foreground="#000000")
-        self.btn_sendcashier.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0",
-                                       text='''Kasaya Gönder''', width=20)
+        self.set_button_configuration(self.btn_sendcashier,btn_font,lambda btn=self.btn_sendcashier: self.btn_send_cashier_clicked(),"Kasaya Gönder")
+        buttons_x_count=buttons_x_count+1
+        xpos=buttons_x_start+buttons_x_count*buttons_x_distance+buttons_x_count*buttons_width
+        ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
+        self.btn_sendcashier.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
 
         self.btn_clearlasttransaction = tk.Button(self.functions_frame)
-        self.btn_clearlasttransaction.configure(
-            command=lambda btn=self.btn_clearlasttransaction: self.btn_clearlasttransaction_clicked())
-        self.btn_clearlasttransaction.place(relx=0.767, rely=0.500, height=buttons_height, width=buttons_width)
-        self.btn_clearlasttransaction.configure(activebackground="#ececec", activeforeground="#000000",
-                                                background="#d9d9d9")
-        self.btn_clearlasttransaction.configure(disabledforeground="#a3a3a3", font=btn_font, foreground="#000000")
-        self.btn_clearlasttransaction.configure(highlightbackground="#d9d9d9", highlightcolor="black", pady="0",
-                                                text='''Son İşlemi Sil''', width=20)
+        self.set_button_configuration(self.btn_clearlasttransaction,btn_font,lambda btn=self.btn_clearlasttransaction: self.btn_clearlasttransaction_clicked(),"Som İşlemi Sil")
+        buttons_x_count=buttons_x_count+1
+        xpos=buttons_x_start+buttons_x_count*buttons_x_distance+buttons_x_count*buttons_width
+        ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
+        self.btn_clearlasttransaction.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
+
+    def btn_addpackedproduct_clicked(self):
+        add_prepared_package(self)
 
 
     def next_product_button_clicked(self):
@@ -948,7 +1082,7 @@ class MainWindow(tk.Tk):
         self.customer_no.insert(END, "0")
         try:
             resp = requests.get("https://"+glb_webHost+"/api/DataRefresh",verify=False)
-        except Error as e:
+        except requests.exceptions.RequestException as e:
             add_to_log("sendToCahsier","SignalRErr :"+e.msg)
         self.btn_cleardara_clicked()
         self.new_customer_clicked()
@@ -985,6 +1119,7 @@ class MainWindow(tk.Tk):
         root.config(cursor="watch")
         root.update()
         salesID = btn.cget("text")
+        glb_sales.clear()
         glb_sales.clear()
         sales_load(salesID, 0)
         sales_update( 0, -1)
@@ -1082,9 +1217,12 @@ class MainWindow(tk.Tk):
         root.config(cursor="watch")
         root.update()
         glb_base_weight = 0
-        floatval = float(glb_filter_data) - glb_base_weight
+        if (glb_filter_data != '' ):
+            floatval = float(glb_filter_data) - glb_base_weight
+        else:
+            floatval=0
         mydata = "{:10.3f}".format(floatval)
-        mydata = mydata.rjust(20)
+        mydata = mydata.rjust(13)
         self.scale_display.delete("1.0", END)
         self.scale_display.insert(END, mydata)
         root.config(cursor="")
@@ -1253,7 +1391,7 @@ class MainWindow(tk.Tk):
         global glb_serialthread
 
         glb_screensize=top.winfo_screenwidth()
-        w, h = top.winfo_screenwidth()/2, root.winfo_screenheight()
+        w, h =  top.winfo_screenwidth()/2, root.winfo_screenheight()
         top.geometry("%dx%d+0+0" % (w, h))
         top.attributes("-fullscreen", FALSE)
         # top.geometry("800x480+1571+152")
@@ -1377,7 +1515,7 @@ def get_data(self, scale_display):
                     res=connect(self, 'COM'+str(i), 9600)
                 else:
                     res=connect(self, 9600, '/dev/tty'+'USB'+str(i))
-        except Exception as err:
+        except pymysql.Error as err:
                 pass
         i=i+1
     if res:
@@ -1439,4 +1577,6 @@ if __name__ == '__main__':
     if ("-location" in myargs.keys()):
         glb_locationid = myargs["-location"]
         vp_start_gui()
+
+
 
