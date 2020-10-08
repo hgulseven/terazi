@@ -801,7 +801,7 @@ class MainWindow(tk.Tk):
         else:
             buttonwidth=24
             buttonheight=2
-            row_size, col_size = 4, 2
+            row_size, col_size = 5, 2
             btn_font = "-family {Segoe UI} -size 16 -weight bold -slant " \
                      "roman -underline 0 -overstrike 0"
 
