@@ -273,9 +273,14 @@ def print_receipt(barcod_to_be_printed):
 #    dev = usb.core.find(idVendor=0x0416, idProduct=0x5011)
     p = Usb(0x0416, 0x5011, 0, 0x81, 0x03)
     p.cut()
-    p.charcode("Turkish")
+#    p.charcode("Turkish")
+    p._raw(b'\x1B\x07\x5B')
+    p.codepage='cp857'
     p.text("\n")
-    p._raw(b'\x1b\x44\x01\x12\x19\x00\n')
+    p._raw(b'\x1b\x61\x01')  # center printing
+    today = datetime.now()
+    p.text(today.strftime('%Y-%m-%d %H:%M:%S.%f') + '\n')
+    p._raw(b'\x1b\x44\x01\x12\x19\x00\n') # set tab stops for output
     toplam=0
     for salesObj in glb_sales:
         strAmount = "{:6.3f}".format(salesObj.amount)
@@ -298,6 +303,7 @@ def print_receipt(barcod_to_be_printed):
     p.image(resized, impl='bitImageColumn')
     p.text("\n"+barcod_to_be_printed)
     p.cut()
+    p.close()
 
 
 
