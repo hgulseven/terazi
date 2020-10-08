@@ -57,7 +57,7 @@ glb_getBarcodeID ="SELECT barcodeID FROM order_and_sales_management.packagedprod
 glb_update_barcode_as_used = "update order_and_sales_management.packagedproductsbarcodes set recstatus=1 where barcodeID=%s;"
 glb_insert_packedprod_items = "insert into order_and_sales_management.packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, ProductID,recStatus,recDate) values(%s,%s,%s,%s,%s,%s);"
 glb_get_packed_details = "SELECT packagedproductdetailsmodel.productID, amount, productName, productRetailPrice FROM order_and_sales_management.packagedproductdetailsmodel left outer join  productmodels on(packagedproductdetailsmodel.productID=productmodels.productID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
-glb_windows_env = 1  # 1 Windows 0 Linux
+glb_windows_env = 0  # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
 glb_filter_data =""
@@ -1577,9 +1577,9 @@ if __name__ == '__main__':
     myargs = getopts(argv)
     glb_data_entry=0
     if ("-dataentry" in myargs.keys() ):
-        glb_data_entry=myargs["-dataentry"]
+        glb_data_entry=int(myargs["-dataentry"])
     if ("-customerwindow" in myargs.keys()):
-        glb_customer_window=myargs["-customerwindow"]
+        glb_customer_window=int(myargs["-customerwindow"])
     if ("-location" in myargs.keys()):
         glb_locationid = myargs["-location"]
         vp_start_gui()
