@@ -57,7 +57,7 @@ glb_getBarcodeID ="SELECT barcodeID FROM order_and_sales_management.packagedprod
 glb_update_barcode_as_used = "update order_and_sales_management.packagedproductsbarcodes set recstatus=1 where barcodeID=%s;"
 glb_insert_packedprod_items = "insert into order_and_sales_management.packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, ProductID,recStatus,recDate) values(%s,%s,%s,%s,%s,%s);"
 glb_get_packed_details = "SELECT packagedproductdetailsmodel.productID, amount, productName, productRetailPrice FROM order_and_sales_management.packagedproductdetailsmodel left outer join  productmodels on(packagedproductdetailsmodel.productID=productmodels.productID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
-glb_windows_env = 1  # 1 Windows 0 Linux
+glb_windows_env = 0  # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
 glb_filter_data =""
@@ -907,9 +907,9 @@ class MainWindow(tk.Tk):
             btn_font = "-family {Segoe UI} -size 12 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         else:
-            buttons_height = 65
-            buttons_width = 200
-            buttons_x_start = 35
+            buttons_height = 60
+            buttons_width = 220
+            buttons_x_start = 25
             buttons_x_distance = 30
             buttons_y_start =10
             buttons_y_distance = 10
@@ -983,7 +983,7 @@ class MainWindow(tk.Tk):
         self.btn_sendcashier.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
 
         self.btn_clearlasttransaction = tk.Button(self.functions_frame)
-        self.set_button_configuration(self.btn_clearlasttransaction,btn_font,lambda btn=self.btn_clearlasttransaction: self.btn_clearlasttransaction_clicked(),"Som İşlemi Sil")
+        self.set_button_configuration(self.btn_clearlasttransaction,btn_font,lambda btn=self.btn_clearlasttransaction: self.btn_clearlasttransaction_clicked(),"Son İşlemi Sil")
         buttons_x_count=buttons_x_count+1
         xpos=buttons_x_start+buttons_x_count*buttons_x_distance+buttons_x_count*buttons_width
         ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
@@ -1573,14 +1573,14 @@ def getopts(argv):
    return opts
 
 if __name__ == '__main__':
-    from sys import argv  # example client code
+    from sys import argv
     myargs = getopts(argv)
     glb_data_entry=0
     if ("-dataentry" in myargs.keys() ):
         glb_data_entry=myargs["-dataentry"]
     if ("-customerwindow" in myargs.keys()):
         glb_customer_window=myargs["-customerwindow"]
-    if ("-location" in myargs.keys()):
+    if ("-location" in myargs.keys() ):
         glb_locationid = myargs["-location"]
         vp_start_gui()
 
