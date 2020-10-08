@@ -1558,7 +1558,7 @@ def get_data(self, scale_display):
                 exit
                 pass
             except ValueError as err:
-                add_to_log("Get data", "glb_filter_data= "+glb_filter_data +"  error message "+ err.msg)
+                add_to_log("Get data", "glb_filter_data= "+glb_filter_data +"  error message ")
                 pass
 
 
@@ -1577,9 +1577,9 @@ if __name__ == '__main__':
     myargs = getopts(argv)
     glb_data_entry=0
     if ("-dataentry" in myargs.keys() ):
-        glb_data_entry=myargs["-dataentry"]
+        glb_data_entry=int(myargs["-dataentry"])
     if ("-customerwindow" in myargs.keys()):
-        glb_customer_window=myargs["-customerwindow"]
+        glb_customer_window=int(myargs["-customerwindow"])
     if ("-location" in myargs.keys() ):
         glb_locationid = myargs["-location"]
         vp_start_gui()
