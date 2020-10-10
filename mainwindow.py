@@ -754,8 +754,8 @@ class MainWindow(tk.Tk):
         textdata = textdata.rstrip("\n")
         textdata = textdata.lstrip("\n")
         self.prdct_barcode.delete('1.0', END)
-        product_code=int(textdata[9:13])
-        if product_code >= 9950 and product_code <= 9970:
+        product_code=int(textdata[8:12])
+        if product_code >= 5600 and product_code <= 5619:
             try:
                 conn = pymysql.connect(host=glb_host,
                                    database=glb_database,
@@ -801,7 +801,7 @@ class MainWindow(tk.Tk):
         else:
             buttonwidth=24
             buttonheight=2
-            row_size, col_size = 4, 2
+            row_size, col_size = 5, 2
             btn_font = "-family {Segoe UI} -size 16 -weight bold -slant " \
                      "roman -underline 0 -overstrike 0"
 
