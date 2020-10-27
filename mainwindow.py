@@ -164,7 +164,6 @@ class SalesCounter(object):
             counter=-1
         return returnvalue, counter
 
-
 class dbCore(object):
     glb_host = "192.168.1.45"
     glb_database = "order_and_sales_management"
@@ -383,7 +382,7 @@ class db_interface(object):
             db_interface.sql_error(self, wndHandle, "Veri tabanı bağlantı hatası")
         return returnvalue
 
-    def sales_load(self, wndHandle, salesID, typeOfCollection,salesList, sales_line_Id,locationid,base_weight):
+    def sales_load(self, wndHandle, salesID, typeOfCollection,salesList, sales_line_id,locationid,base_weight):
         returnvalue=False
         error = ""
         rows = None
@@ -415,7 +414,7 @@ class db_interface(object):
                 db_interface.sql_error(self, wndHandle, error)
         else:
             db_interface.sql_error(self, wndHandle, "Veri Tabanı bağlantı hatası")
-        return returnvalue
+        return returnvalue, salesList, sales_line_id, base_weight
 
     def sales_merge(self,wndHandle, merge_customer_no, typeOfCollection,glb_sales):
         global glb_customer_no
@@ -611,7 +610,7 @@ class db_interface(object):
         returnvalue=False
         error = ""
         rows = ()
-        salesList = None
+        salesList = []
 
         if db_interface.interface_up:
             error, rows = db_interface.db_core.execsql(db_interface.glb_get_packed_details, (barcodeID,))
@@ -692,7 +691,6 @@ def print_receipt(barcod_to_be_printed):
     p.text("\n"+barcod_to_be_printed)
     p.cut()
     p.close()
-
 
 def maininit(gui, *args, **kwargs):
     global w, top_level, root
@@ -823,7 +821,7 @@ class MainWindow(tk.Tk):
         self.prdct_barcode.delete('1.0', END)
         if textdata != "" and len(textdata) >= 12:
             product_code=int(textdata[8:12])
-            if product_code >= 5600 and product_code <= 5619:
+            if product_code >= 5600 and product_code <= 5710:
                 returnvalue, salesList = db_interface.get_packaged_products(self, textdata)
                 if returnvalue:
                     for salesItem in salesList:
@@ -834,7 +832,7 @@ class MainWindow(tk.Tk):
                         salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
                         salesObj.productID = salesItem.productID
                         salesObj.amount = salesItem.amount
-                        salesObj.Name = salesItem.name
+                        salesObj.Name = salesItem.Name
                         salesObj.retailPrice = salesItem.retailPrice
                         salesObj.typeOfCollection = 0
                         salesObj.productBarcodeID=salesItem.productBarcodeID
@@ -1134,6 +1132,8 @@ class MainWindow(tk.Tk):
         global glb_customer_no
         global glb_locationid
         global glb_base_weight
+        global glb_sales_line_id
+        global glb_sales
         global root
         global glb_merge_customer_flag
         noerror=False
@@ -1148,7 +1148,7 @@ class MainWindow(tk.Tk):
             glb_customer_no = btn.cget("text")
             self.customer_no.delete('1.0', END)
             self.customer_no.insert(END, glb_customer_no)
-            noerror=db_interface.sales_load(self, glb_customer_no, -1,glb_sales,glb_sales_line_id, glb_locationid, glb_base_weight)
+            noerror,glb_sales, glb_sales_line_id, glb_base_weight =db_interface.sales_load(self, glb_customer_no, -1,glb_sales,glb_sales_line_id, glb_locationid, glb_base_weight)
         if noerror==True:
             self.product_frame_def()
             self.update_products_sold()
@@ -1222,11 +1222,15 @@ class MainWindow(tk.Tk):
         global glb_locationid
         global glb_base_weight
         global glb_webHost
+        global glb_sales_line_id
+        global glb_sales
+        returnvalue = False
 
         root.config(cursor="watch")
         root.update()
         glb_customer_no = btn.cget("text")
-        if db_interface.sales_load(self, glb_customer_no, 0,glb_sales,glb_sales_line_id, glb_locationid, glb_base_weight):
+        returnvalue, glb_sales, glb_sales_line_id, glb_base_weight = db_interface.sales_load(self, glb_customer_no, 0,glb_sales,glb_sales_line_id, glb_locationid, glb_base_weight)
+        if (returnvalue):
             if db_interface.sales_update(self, 0, -1, glb_sales,glb_locationid,glb_base_weight):
                 self.customer_no.delete('1.0', END)
                 self.customer_no.insert(END, glb_customer_no)
@@ -1382,6 +1386,9 @@ class MainWindow(tk.Tk):
         global glb_location_id
         global glb_base_weight
         global glb_sales_line_id
+        global glb_sales
+        global glb_customer_no
+        returnvalue = False
 
         root.config(cursor="watch")
         root.update()
@@ -1411,7 +1418,8 @@ class MainWindow(tk.Tk):
                 self.customer_frame_def()
                 self.functions_frame_def()
                 self.select_reyon.current(glb_scaleId)
-                if db_interface.sales_load(self,glb_customer_no, -1,glb_sales,glb_sales_line_id,glb_locationid,glb_base_weight):
+                returnvalue, glb_sales, glb_sales_line_id, glb_base_weight = db_interface.sales_load(self,glb_customer_no, -1,glb_sales,glb_sales_line_id,glb_locationid,glb_base_weight)
+                if returnvalue:
                     self.update_products_sold()
                     self.customer_no.delete('1.0', END)
                     self.customer_no.insert(END, glb_customer_no)
@@ -1598,7 +1606,6 @@ def connect(self, baud, myport ):
            return False
     return True
 
-
 def checkiffloat(strval):
     x=['0','1','2','3','4','5','6','7','8','9','.',]
     i=0
@@ -1608,7 +1615,6 @@ def checkiffloat(strval):
     if i == len(strval):
         numericval=True
     return numericval
-
 
 def get_data(self, scale_display):
     """This function serves the purpose of collecting data from the serial object and storing
@@ -1667,7 +1673,6 @@ def get_data(self, scale_display):
             except ValueError as err:
                 add_to_log("Get data", "glb_filter_data= "+glb_filter_data +"  error message ")
                 pass
-
 
 def getopts(argv):
    opts = {}
