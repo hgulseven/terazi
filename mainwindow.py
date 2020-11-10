@@ -974,12 +974,22 @@ class MainWindow(tk.Tk):
     def functions_frame_def(self):
         global top
         global glb_screensize
+
+        buttons_x_start = 25
+        buttons_x_start = 25
+        buttons_x_distance = 30
+        buttons_y_start = 10
+        buttons_y_distance = 10
         if glb_screensize==800:
             buttons_height = 38
             buttons_width = 150
-            buttons_start=20
-            buttons_distance = 15
-            btn_font = "-family {Segoe UI} -size 12 -weight bold -slant " \
+            buttons_height = 38
+            buttons_width = 150
+            buttons_x_start = 5
+            buttons_x_distance = 3
+            buttons_y_start = 3
+            buttons_y_distance = 3
+            btn_font = "-family {Segoe UI} -size 11 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         else:
             buttons_height = 60
