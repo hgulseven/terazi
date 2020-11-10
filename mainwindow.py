@@ -17,7 +17,7 @@ from barcode import EAN13
 from barcode.writer import ImageWriter
 from escpos.printer import Usb
 
-glb_windows_env = 1  # 1 Windows 0 Linux
+glb_windows_env = 0  # 1 Windows 0 Linux
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
 glb_filter_data = ""
@@ -154,19 +154,19 @@ class SalesCounter(object):
                     if error == "":
                         returnvalue=True
                     else:
-                        db_interface.sql_error(self, wndHandle, error)
+                        db_interface.sql_error(wndHandle, error)
                 else:
-                    db_interface.sql_error(self, wndHandle, error)
+                    db_interface.sql_error(wndHandle, error)
             else:
-                db_interface.sql_error(self, wndHandle, error)
+                db_interface.sql_error(wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri tabanı bağlantı hatası")
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
             counter=-1
         return returnvalue, counter
 
 class dbCore(object):
     glb_host = "192.168.1.45"
-    glb_database = "order_and_sales_management"
+    glb_database = "order_and_sales"
     glb_user = "hakan"
     glb_password = "QAZwsx135"
     conn=None
@@ -205,7 +205,7 @@ class dbCore(object):
         try:
             dbCore.cursor.execute(sql_command, sql_params)
         except Exception as e:
-            error = e.args[0]
+            error = e.args[1]
         return error
 
     def commit(self):
@@ -232,18 +232,18 @@ class db_interface(object):
     glb_UpdateSales = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s, locationID=%s,dara=%s,productBarcodeID=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
     glb_SelectSalesLineExists = "select count(*) from salesmodels where salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
     glb_UpdateSalesLine = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s,locationID=%s,dara=%s,productBarcodeID=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
-    glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID,dara,productBarcodeID) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
+    glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID,dara,productBarcodeID,saleTime) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
     glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection,dara, salesmodels.productBarcodeID from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s and locationID=%s;"
     glb_SelectProductByBarcode = "Select productID, productName, productRetailPrice from productmodels where productBarcodeID=%s;"
     glb_SelectCustomers = "Select distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = -1 and locationID=%s order by salesID;"
     glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = 0 and locationID=%s order by salesID;"
     glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
-    glb_getBarcodeID = "SELECT barcodeID FROM order_and_sales_management.packagedproductsbarcodes where recstatus=0 LIMIT 1;"
-    glb_update_barcode_as_used = "update order_and_sales_management.packagedproductsbarcodes set recstatus=1 where barcodeID=%s;"
-    glb_insert_packedprod_items = "insert into order_and_sales_management.packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, ProductID,recStatus,recDate,customerID) values(%s,%s,%s,%s,%s,%s,%s);"
-    glb_get_packed_details = "SELECT packagedproductdetailsmodel.productID, amount, productName, productRetailPrice FROM order_and_sales_management.packagedproductdetailsmodel left outer join  productmodels on(packagedproductdetailsmodel.productID=productmodels.productID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
+    glb_getBarcodeID = "SELECT barcodeID FROM order_and_sales.packagedproductsbarcodes where recstatus=0 LIMIT 1;"
+    glb_update_barcode_as_used = "update order_and_sales.packagedproductsbarcodes set recstatus=1 where barcodeID=%s;"
+    glb_insert_packedprod_items = "insert into order_and_sales.packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, ProductID,recStatus,recDate,customerID) values(%s,%s,%s,%s,%s,%s,%s);"
+    glb_get_packed_details = "SELECT packagedproductdetailsmodel.productID, amount, productName, productRetailPrice FROM order_and_sales.packagedproductdetailsmodel left outer join  productmodels on(packagedproductdetailsmodel.productID=productmodels.productID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
     glb_Update_Sales_As_Merged = "update salesmodels set typeOfCollection=%s where saleDate=%s and salesID=%s and locationID=%s"
-    glb_package_exists = "SELECT count(PackedProductID), PackedProductID FROM order_and_sales.packagedproductdetailsmodel where customerID = %s and DATE_FORMAT(recDate,'%Y-%m-%d') = %s group by PackedProductID"
+    glb_package_exists = "SELECT count(PackedProductID), PackedProductID FROM order_and_sales.packagedproductdetailsmodel where customerID = %s and DATE_FORMAT(recDate,'%%Y-%%m-%%d') = %s group by PackedProductID"
     """Connection data"""
 
     interface_up = False
@@ -297,13 +297,14 @@ class db_interface(object):
 #    /* Get barcode ID for prepared package */
 #   /* add products to prepered packaged table */
         if db_interface.interface_up:
-            error, rows = db_interface.db_core.execsql(db_interface.glb_package_exists)
+            my_date = datetime.now()
+            error, rows = db_interface.db_core.execsql(db_interface.glb_package_exists,(salesList[0].salesID, my_date.strftime('%Y-%m-%d')))
             if error == "":
-                if rows is None:
+                if len(rows)==0:
                     error, rows = db_interface.db_core.execsql(db_interface.glb_getBarcodeID,())
                     if error == "":
                         if rows is not None:
-                            barcodeID=rows[0][0]
+                            barcodeID = rows[0][0]
                             error = db_interface.db_core.execnonesql(db_interface.glb_update_barcode_as_used,(barcodeID,))
                             if error == "":
                                 lineNo = 1
@@ -318,14 +319,14 @@ class db_interface(object):
                                 if error == "":
                                     returnvalue=barcodeID
                                 else:
-                                    db_interface.sql_error(self, wndHandle, error)
+                                    db_interface.sql_error( wndHandle, error)
                             else:
-                                db_interface.sql_error(self, wndHandle, error)
+                                db_interface.sql_error( wndHandle, error)
                         else:
-                            db_interface.sql_error(self, wndHandle, "Paketli ürün için barkod kalmadı.")
+                            db_interface.sql_error( wndHandle, "Paketli ürün için barkod kalmadı.")
                             add_to_log("add_prepared_package", "Paketli ürün için barkod kalmadı.")
                     else:
-                        db_interface.sql_error(self, wndHandle, "Paketli ürün için barkod kalmadı veya Sql Hatası = "+ error)
+                        db_interface.sql_error( wndHandle, "Paketli ürün için barkod kalmadı veya Sql Hatası = "+ error)
                 else:
                     returnvalue= rows[0][1]
         else:
@@ -373,7 +374,7 @@ class db_interface(object):
                         error = db_interface.db_core.execnonesql(db_interface.glb_InsertSalesLine,
                                                                  (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID,
                                                                   salesObj.personelID, salesObj.productID,salesObj.amount,paidAmount,
-                                                                  typeOfCollection,locationid,base_weight,salesObj.productBarcodeID))
+                                                                  typeOfCollection,locationid,base_weight,salesObj.productBarcodeID,datetime.now()))
                     if error != "":
                         break
                 else:
@@ -383,11 +384,11 @@ class db_interface(object):
                 if error == "":
                     returnvalue=True
                 else:
-                    db_interface.sql_error(self, wndHandle, error)
+                    db_interface.sql_error( wndHandle, error)
             else:
-                db_interface.sql_error(self, wndHandle, error)
+                db_interface.sql_error(wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri tabanı bağlantı hatası")
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
         return returnvalue
 
     def sales_load(self, wndHandle, salesID, typeOfCollection,salesList, sales_line_id,locationid,base_weight):
@@ -419,7 +420,7 @@ class db_interface(object):
                     salesList.append(salesObj)
                     sales_line_id = sales_line_id + 1
             else:
-                db_interface.sql_error(self, wndHandle, error)
+                db_interface.sql_error(wndHandle, error)
         else:
             db_interface.sql_error(self, wndHandle, "Veri Tabanı bağlantı hatası")
         return returnvalue, salesList, sales_line_id, base_weight
@@ -517,9 +518,9 @@ class db_interface(object):
                     customer_obj.Name = row[0]
                     activecustomers.append(customer_obj)
             else:
-                db_interface.sql_error(self, wndHandle, error)
+                db_interface.sql_error(wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri tabanı bağlantı hatası")
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
         return returnvalue
 
     def get_customers_on_cashier(self,wndHandle,customerList,locationid):
@@ -539,9 +540,9 @@ class db_interface(object):
                     customer_obj.Name = row[0]
                     customerList.append(customer_obj)
             else:
-                db_interface.sql_error(self, wndHandle, error)
+                db_interface.sql_error(wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri tabanı bağlantı hatası")
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
         return returnvalue
 
     def load_products(self, wndHandle, reyonID, product_names):
@@ -562,9 +563,9 @@ class db_interface(object):
                     productObj.productBarcodeID=row[4]
                     product_names.append(productObj)
             else:
-                db_interface.sql_error(self, wndHandle, error)
+                db_interface.sql_error(wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri tabanı bağlantı hatası")
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
         return returnvalue
 
     def wait_for_sql(self):
@@ -589,9 +590,9 @@ class db_interface(object):
                     reyonObj.ReyonName = row[1]
                     reyonlar.append(reyonObj)
             else:
-                db_interface.sql_error(self, wndHandle, error)
+                db_interface.sql_error(wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri tabanı bağlantı hatası")
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
         return returnvalue
 
     def load_employees(self, wndHandle, employees):
@@ -609,9 +610,9 @@ class db_interface(object):
                     employeeObj.personelID = row[0]
                     employees.append(employeeObj)
             else:
-                db_interface.sql_error(self, wndHandle, error)
+                db_interface.sql_error( wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri tabanı bağlantı hatası")
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
         return returnvalue
 
     def get_packaged_products(self, wndHandle, barcodeID):
@@ -638,9 +639,9 @@ class db_interface(object):
                     salesList.append(salesObj)
                     lineID=lineID+1
             else:
-                db_interface.sql_error(self, wndHandle, error)
+                db_interface.sql_error(wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri tabanı bağlantı hatası")
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
         return returnvalue, salesList
 
 class load_tables:
@@ -702,7 +703,7 @@ def print_receipt(barcod_to_be_printed):
         p.cut()
         p.close()
     except Exception as e:
-        returnvalue = "Printer hatası : "+ e.error
+        returnvalue = "Printer hatası : "+ e.args[0]
     return returnvalue
 
 def maininit(gui, *args, **kwargs):
@@ -1524,7 +1525,7 @@ class MainWindow(tk.Tk):
             self.message_box_text.insert(END, "Yeni Müşteri Seçilmeden Ürün Seçimi Yapılamaz")
 
     def __init__(self, top):
-        '''super().__init__()'''
+        super().__init__()
         global glb_screensize
         global glb_serial_object
         global glb_serialthread
