@@ -992,9 +992,9 @@ class MainWindow(tk.Tk):
             btn_font = "-family {Segoe UI} -size 11 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         else:
-            buttons_height = 60
+            buttons_height = 50
             buttons_width = 220
-            buttons_x_start = 25
+            buttons_x_start = 15
             buttons_x_distance = 30
             buttons_y_start =5
             buttons_y_distance = 5
