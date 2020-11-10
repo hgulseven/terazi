@@ -996,8 +996,8 @@ class MainWindow(tk.Tk):
             buttons_width = 220
             buttons_x_start = 25
             buttons_x_distance = 30
-            buttons_y_start =10
-            buttons_y_distance = 10
+            buttons_y_start =5
+            buttons_y_distance = 5
             btn_font = "-family {Segoe UI} -size 15 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         self.functions_frame.place(relx=0.001, rely=0.700, relheight=0.200, relwidth=0.980)
