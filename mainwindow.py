@@ -240,9 +240,10 @@ class db_interface(object):
     glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
     glb_getBarcodeID = "SELECT barcodeID FROM order_and_sales_management.packagedproductsbarcodes where recstatus=0 LIMIT 1;"
     glb_update_barcode_as_used = "update order_and_sales_management.packagedproductsbarcodes set recstatus=1 where barcodeID=%s;"
-    glb_insert_packedprod_items = "insert into order_and_sales_management.packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, ProductID,recStatus,recDate) values(%s,%s,%s,%s,%s,%s);"
+    glb_insert_packedprod_items = "insert into order_and_sales_management.packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, ProductID,recStatus,recDate,customerID) values(%s,%s,%s,%s,%s,%s,%s);"
     glb_get_packed_details = "SELECT packagedproductdetailsmodel.productID, amount, productName, productRetailPrice FROM order_and_sales_management.packagedproductdetailsmodel left outer join  productmodels on(packagedproductdetailsmodel.productID=productmodels.productID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
     glb_Update_Sales_As_Merged = "update salesmodels set typeOfCollection=%s where saleDate=%s and salesID=%s and locationID=%s"
+    glb_package_exists = "SELECT count(PackedProductID), PackedProductID FROM order_and_sales.packagedproductdetailsmodel where customerID = %s and DATE_FORMAT(recDate,'%Y-%m-%d') = %s group by PackedProductID"
     """Connection data"""
 
     interface_up = False
@@ -296,36 +297,39 @@ class db_interface(object):
 #    /* Get barcode ID for prepared package */
 #   /* add products to prepered packaged table */
         if db_interface.interface_up:
-            error, rows = db_interface.db_core.execsql(db_interface.glb_getBarcodeID,())
+            error, rows = db_interface.db_core.execsql(db_interface.glb_package_exists)
             if error == "":
-                if rows is not None:
-                    barcodeID=rows[0][0]
-                    error = db_interface.db_core.execnonesql(db_interface.glb_update_barcode_as_used,(barcodeID,))
+                if rows is None:
+                    error, rows = db_interface.db_core.execsql(db_interface.glb_getBarcodeID,())
                     if error == "":
-                        lineNo = 1
-                        for salesObj in salesList:
-                            error = db_interface.db_core.execnonesql(db_interface.glb_insert_packedprod_items,(
-                                                        barcodeID, lineNo, salesObj.amount, salesObj.productID,"0",datetime.now(),))
-                            lineNo = lineNo + 1
-                            if error != "":
-                                break
-                        if error == "":
-                            error = db_interface.db_core.commit()
+                        if rows is not None:
+                            barcodeID=rows[0][0]
+                            error = db_interface.db_core.execnonesql(db_interface.glb_update_barcode_as_used,(barcodeID,))
                             if error == "":
-                                returnvalue=barcodeID
+                                lineNo = 1
+                                for salesObj in salesList:
+                                    error = db_interface.db_core.execnonesql(db_interface.glb_insert_packedprod_items,(
+                                                        barcodeID, lineNo, salesObj.amount, salesObj.productID,"0",datetime.now(),salesObj.salesID))
+                                    lineNo = lineNo + 1
+                                    if error != "":
+                                        break
+                                if error == "":
+                                    error = db_interface.db_core.commit()
+                                if error == "":
+                                    returnvalue=barcodeID
+                                else:
+                                    db_interface.sql_error(self, wndHandle, error)
                             else:
                                 db_interface.sql_error(self, wndHandle, error)
                         else:
-                            db_interface.sql_error(self, wndHandle, error)
+                            db_interface.sql_error(self, wndHandle, "Paketli ürün için barkod kalmadı.")
+                            add_to_log("add_prepared_package", "Paketli ürün için barkod kalmadı.")
                     else:
-                        db_interface.sql_error(self, wndHandle, error)
+                        db_interface.sql_error(self, wndHandle, "Paketli ürün için barkod kalmadı veya Sql Hatası = "+ error)
                 else:
-                    db_interface.sql_error(self, wndHandle, "Paketli ürün için barkod kalmadı.")
-                    add_to_log("add_prepared_package", "Paketli ürün için barkod kalmadı.")
-            else:
-                db_interface.sql_error(self, wndHandle, error)
+                    returnvalue= rows[0][1]
         else:
-            db_interface.sql_error(self, wndHandle, error)
+          db_interface.sql_error(self, wndHandle, error)
         return returnvalue
 
     def sales_hard_delete(self, wndHandle, salesID):
@@ -352,6 +356,10 @@ class db_interface(object):
         rows = ()
 
         if db_interface.interface_up:
+            i=1
+            for salesObj in saleList:
+                salesObj.salesLineID = i
+                i=i+1
             for salesObj in saleList:
                 error, rows = db_interface.db_core.execsql(db_interface.glb_SelectSalesLineExists,(salesObj.salesID,salesObj.salesLineID, salesObj.saleDate,locationid))
                 if error == "":
@@ -657,40 +665,45 @@ class load_tables:
                 returnvalue = db_interface.load_employees(self, glb_employees)
 
 def print_receipt(barcod_to_be_printed):
+    returnvalue = ""
 #    dev = usb.core.find(idVendor=0x0416, idProduct=0x5011)
-    p = Usb(0x0416, 0x5011, 0, 0x81, 0x03)
-    p.cut()
+    try:
+        p = Usb(0x0416, 0x5011, 0, 0x81, 0x03)
+        p.cut()
 #    p.charcode("Turkish")
-    p._raw(b'\x1B\x07\x5B')
-    p.codepage='cp857'
-    p.text("\n")
-    p._raw(b'\x1b\x61\x01')  # center printing
-    today = datetime.now()
-    p.text(today.strftime('%Y-%m-%d %H:%M:%S.%f') + '\n')
-    p._raw(b'\x1b\x44\x01\x12\x19\x00\n') # set tab stops for output
-    toplam=0
-    for salesObj in glb_sales:
-        strAmount = "{:6.3f}".format(salesObj.amount)
-        strAmount = strAmount.rjust(6)
-        tutar=salesObj.amount*float(salesObj.retailPrice)
-        toplam=toplam+tutar
-        strTutar = "{:7.2f}".format(tutar)
-        strTutar = strTutar.rjust(7)
-        p.text("\x09 "+salesObj.Name[0:15]+"\x09"+strAmount+"\x09"+strTutar+"\n")
-    strToplam="{:7.2f}".format(toplam)
-    strToplam=strToplam.rjust(7)
-    p.text("\x09\x09\x09" + " ______\n")
-    p.text("\x09"+" Toplam"+"\x09\x09"+strToplam)
-    p.text("\n")
-    with open('temp.jpeg', 'wb') as f:
-        EAN13(barcod_to_be_printed, writer=ImageWriter()).write(f)
-    to_be_resized=Image.open("temp.jpeg")
-    newSize=(300,70)
-    resized=to_be_resized.resize(newSize,resample=PIL.Image.NEAREST)
-    p.image(resized, impl='bitImageColumn')
-    p.text("\n"+barcod_to_be_printed)
-    p.cut()
-    p.close()
+        p._raw(b'\x1B\x07\x5B')
+        p.codepage='cp857'
+        p.text("\n")
+        p._raw(b'\x1b\x61\x01')  # center printing
+        today = datetime.now()
+        p.text(today.strftime('%Y-%m-%d %H:%M:%S.%f') + '\n')
+        p._raw(b'\x1b\x44\x01\x12\x19\x00\n') # set tab stops for output
+        toplam=0
+        for salesObj in glb_sales:
+            strAmount = "{:6.3f}".format(salesObj.amount)
+            strAmount = strAmount.rjust(6)
+            tutar=salesObj.amount*float(salesObj.retailPrice)
+            toplam=toplam+tutar
+            strTutar = "{:7.2f}".format(tutar)
+            strTutar = strTutar.rjust(7)
+            p.text("\x09 "+salesObj.Name[0:15]+"\x09"+strAmount+"\x09"+strTutar+"\n")
+        strToplam="{:7.2f}".format(toplam)
+        strToplam=strToplam.rjust(7)
+        p.text("\x09\x09\x09" + " ______\n")
+        p.text("\x09"+" Toplam"+"\x09\x09"+strToplam)
+        p.text("\n")
+        with open('temp.jpeg', 'wb') as f:
+            EAN13(barcod_to_be_printed, writer=ImageWriter()).write(f)
+        to_be_resized=Image.open("temp.jpeg")
+        newSize=(300,70)
+        resized=to_be_resized.resize(newSize,resample=PIL.Image.NEAREST)
+        p.image(resized, impl='bitImageColumn')
+        p.text("\n"+barcod_to_be_printed)
+        p.cut()
+        p.close()
+    except Exception as e:
+        returnvalue = "Printer hatası : "+ e.error
+    return returnvalue
 
 def maininit(gui, *args, **kwargs):
     global w, top_level, root
@@ -1058,15 +1071,20 @@ class MainWindow(tk.Tk):
         self.btn_mergesales.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
 
     def btn_addpackedproduct_clicked(self):
+        error =""
         barcodeID=db_interface.add_prepared_package(self,glb_sales)
         if barcodeID != "":
-            print_receipt(barcodeID)
-            glb_sales.clear()
-            self.update_products_sold()
-            if glb_customer_window == 1:
-                self.update_products_sold_for_customer()
-            self.btn_cleardara_clicked()
-            self.new_customer_clicked()
+            error=print_receipt(barcodeID)
+            if error == "":
+                glb_sales.clear()
+                self.update_products_sold()
+                if glb_customer_window == 1:
+                    self.update_products_sold_for_customer()
+                self.btn_cleardara_clicked()
+                self.new_customer_clicked()
+            else:
+                self.message_box_text.delete("1.0", END)
+                self.message_box_text.insert(END,error)
 
     def next_product_button_clicked(self):
         global glb_product_page_count
