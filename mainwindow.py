@@ -774,6 +774,7 @@ class MainWindow(tk.Tk):
             varfunc = self.customer_button_clicked
             self.add_frame_buttons(1, self.product_frame, glb_active_served_customers,glb_active_customers_page_count,varfunc)
 
+
     def call_back_customer_frame_def(self):
         global glb_customers_on_cashier
         global glb_locationid
@@ -1217,6 +1218,7 @@ class MainWindow(tk.Tk):
         global glb_customer_no
         global root
         global glb_serialthread
+        global glb_merge_customer_flag
 
         root.config(cursor="watch")
         root.update()
@@ -1234,6 +1236,7 @@ class MainWindow(tk.Tk):
         self.customer_no.insert(END, glb_customer_no)
         self.employee_frame_def()
         glb_employees_selected = ""
+        glb_merge_customer_flag=None
         root.config(cursor="")
 
     def btn_mergesales_clicked(self):
