@@ -1,5 +1,6 @@
 import datetime
 import os
+import sys
 import threading
 import time
 import tkinter as tk
@@ -17,7 +18,7 @@ from barcode import EAN13
 from barcode.writer import ImageWriter
 from escpos.printer import Usb
 
-glb_windows_env = 0  # 1 Windows 0 Linux
+glb_version_str = "1.0"
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
 glb_filter_data = ""
@@ -58,9 +59,8 @@ glb_active_customers_page_count = 0  # paging of active customers buttons displa
 glb_callback_customers_page_count = 0  # paging of callback customers buttons displayed in product frame
 
 def add_to_log(function, err):
-    global glb_windows_env
 
-    if glb_windows_env == 1:
+    if sys.platform == "win32":
         logpath = "c:\\users\\hakan\\PycharmProjects\\terazi\\"
     else:
         logpath = "/home/pi/PycharmProjects/terazi/"
@@ -161,7 +161,7 @@ class SalesCounter(object):
                 db_interface.sql_error(wndHandle, error)
         else:
             db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
-            counter=-1
+            counter = -1
         return returnvalue, counter
 
 class dbCore(object):
@@ -222,6 +222,7 @@ class dbCore(object):
 
 class db_interface(object):
     # queries
+    glb_getversion = "select versionstr from versiontable"
     glb_GetTeraziProducts = "Select  TeraziID, productmodels.productID, productName, productRetailPrice,productBarcodeID from productmodels left outer join " \
                             "teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"
     glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
@@ -264,6 +265,15 @@ class db_interface(object):
         wndHandle.message_box_text.insert(END,errorMessage)
         db_interface.init()
 
+    def get_version(self):
+        error = ""
+        returnvalue = ""
+        if (db_interface.interface_up):
+            error,raws = db_interface.db_core.execsql(db_interface.glb_getversion, ())
+            if error == "":
+                returnvalue=raws[0][0]
+        return returnvalue
+
     def sales_update(self, wndHandle, srcTypeOfCollection, destTypeOfCollection,saleList,locationid,base_weight):
         global glb_UpdateSales
         global glb_base_weight
@@ -283,11 +293,11 @@ class db_interface(object):
                 if error == "":
                     returnvalue = True
                 else:
-                    db_interface.sql_error(self, wndHandle, error)
+                    db_interface.sql_error( wndHandle, error)
             else:
-                db_interface.sql_error(self, wndHandle, error)
+                db_interface.sql_error( wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri tabanı bağlantı hatası")
+            db_interface.sql_error( wndHandle, "Veri tabanı bağlantı hatası")
         return returnvalue
 
     def add_prepared_package(self, wndHandle, salesList):
@@ -330,7 +340,7 @@ class db_interface(object):
                 else:
                     returnvalue= rows[0][1]
         else:
-          db_interface.sql_error(self, wndHandle, error)
+          db_interface.sql_error( wndHandle, error)
         return returnvalue
 
     def sales_hard_delete(self, wndHandle, salesID):
@@ -346,9 +356,9 @@ class db_interface(object):
                 if error == "":
                     returnvalue = True
                 else:
-                    db_interface.sql_error(self, wndHandle, error)
+                    db_interface.sql_error( wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri tabanı erişim hatası. Fonksiyon : sales_hard_delete")
+            db_interface.sql_error( wndHandle, "Veri tabanı erişim hatası. Fonksiyon : sales_hard_delete")
         return returnvalue
 
     def sales_save(self, wndHandle,typeOfCollection, saleList,locationid,base_weight):
@@ -422,7 +432,7 @@ class db_interface(object):
             else:
                 db_interface.sql_error(wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri Tabanı bağlantı hatası")
+            db_interface.sql_error( wndHandle, "Veri Tabanı bağlantı hatası")
         return returnvalue, salesList, sales_line_id, base_weight
 
     def sales_merge(self,wndHandle, merge_customer_no, typeOfCollection,glb_sales):
@@ -460,13 +470,13 @@ class db_interface(object):
                     if error == "":
                         returnvalue = True
                     else:
-                        db_interface.sql_error(self, wndHandle, error)
+                        db_interface.sql_error( wndHandle, error)
                 else:
-                    db_interface.sql_error(self, wndHandle, error)
+                    db_interface.sql_error( wndHandle, error)
             else:
-                db_interface.sql_error(self, wndHandle, error)
+                db_interface.sql_error( wndHandle, error)
         else:
-            db_interface.sql_error(self, wndHandle, "Veri Tabanı bağlantı hatası")
+            db_interface.sql_error( wndHandle, "Veri Tabanı bağlantı hatası")
         return returnvalue
 
     def get_product_based_on_barcod(self,wndHandle, prdct_barcode, salesObj):
@@ -720,7 +730,8 @@ def vp_start_gui():
 
 class CustomerWindow(tk.Tk):
         def __init__(self, master):
-            super().__init__()
+            super().__init__(useTk=0)
+
             self.master=master
             tk.Frame.__init__(self.master)
 
@@ -1538,7 +1549,7 @@ class MainWindow(tk.Tk):
             self.message_box_text.insert(END, "Yeni Müşteri Seçilmeden Ürün Seçimi Yapılamaz")
 
     def __init__(self, top):
-        super().__init__()
+        super().__init__(useTk=0)
         global glb_screensize
         global glb_serial_object
         global glb_serialthread
@@ -1662,7 +1673,7 @@ def get_data(self, scale_display):
     while not res and i< 5:
         try:
             if glb_data_entry == 0:
-                if glb_windows_env:
+                if sys.platform == "win32":
                     res=connect(self, 'COM'+str(i), 9600)
                 else:
                     res=connect(self, 9600, '/dev/tty'+'USB'+str(i))
@@ -1727,7 +1738,23 @@ if __name__ == '__main__':
     if ("-location" in myargs.keys() ):
         glb_locationid = myargs["-location"]
     db_interface = db_interface()
-    vp_start_gui()
+    db_interface.wait_for_sql()
+    if (glb_version_str == db_interface.get_version()):
+        vp_start_gui()
+    else:
+        if sys.platform == "win32":
+            logpath = "c:\\users\\hakan\\PycharmProjects\\terazi\\"
+        else:
+            logpath = "/home/pi/PycharmProjects/terazi/"
+        print("Yeni Versiyon Üretilmiş. Yeni versiyon indiriliyor lütfen bekleyiniz. ")
+        command=sys.executable+" "+logpath + "ftpget.py"
+        i = 0
+        while i<len(argv):
+            command=command+ " " +argv[i]
+            i = i+1
+        os.system(command)
+
+
 
 
 
