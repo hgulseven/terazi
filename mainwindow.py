@@ -1,4 +1,5 @@
 import datetime
+import decimal
 import os
 import sys
 import threading
@@ -18,7 +19,7 @@ from barcode import EAN13
 from barcode.writer import ImageWriter
 from escpos.printer import Usb
 
-glb_version_str = "1.0"
+glb_version_str = "2.0"
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
 glb_filter_data = ""
@@ -74,8 +75,7 @@ def add_to_log(function, err):
     the_file.close()
 
 class Product(object):
-    def __init__(self, productID=None, Name=None, price=None, teraziID=None, productBarcodeID=None):
-        self.productID = productID
+    def __init__(self, Name=None, price=None, teraziID=None, productBarcodeID=None):
         self.Name = Name
         self.price = price
         self.teraziID = teraziID
@@ -96,8 +96,8 @@ class Employee(object):
         self.Name = Name
 
 class Sales(object):
-    def __init__(self, salesID=None, salesLineID=None, personelID=None, productID=None, Name=None,
-                 retailPrice=None, amount=None, typeOfCollection=None, productBarcodeID=None):
+    def __init__(self, salesID=None, salesLineID=None, personelID=None, Name=None,
+                 retailPrice=None, amount=None, typeOfCollection=None, productBarcodeID=None, productID=None):
         global glb_base_weight
         global glb_locationid
 
@@ -106,8 +106,8 @@ class Sales(object):
         self.salesID = salesID
         self.salesLineID = salesLineID
         self.personelID = personelID
-        self.productID = productID
         self.Name = Name
+        self.productID=productID
         self.retailPrice = retailPrice
         self.amount = amount
         self.typeOfCollection = typeOfCollection
@@ -197,7 +197,7 @@ class dbCore(object):
             dbCore.cursor.execute(sql_command, sql_params)
             rows = dbCore.cursor.fetchall()
         except Exception as e:
-            error = e.args[0]
+            error = e.args[1]
         return error,rows
 
     def execnonesql(self,sql_command,sql_params):
@@ -205,7 +205,7 @@ class dbCore(object):
         try:
             dbCore.cursor.execute(sql_command, sql_params)
         except Exception as e:
-            error = e.args[1]
+            error = e.args[0]
         return error
 
     def commit(self):
@@ -221,28 +221,33 @@ class dbCore(object):
         dbCore.conn.close()
 
 class db_interface(object):
+
+
+
+
+
     # queries
     glb_getversion = "select versionstr from versiontable"
-    glb_GetTeraziProducts = "Select  TeraziID, productmodels.productID, productName, productRetailPrice,productBarcodeID from productmodels left outer join " \
-                            "teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"
+    glb_GetTeraziProducts = "Select  TeraziID, productName, productRetailPrice,barcodeID,products.productID from teraziscreenmapping left outer join " \
+                            "products on (teraziscreenmapping.barcodeID=products.productBarcodeID) where TeraziID=%s order by screenSeqNo;"
     glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
     glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels;"
     glb_SelectCounter = "select counter from salescounter where salesDate=%s and locationID=%s;"
     glb_UpdateCounter = "Update salescounter set counter=%s where salesDate=%s and locationID=%s;"
     glb_InsertCounter = "insert into salescounter (salesDate, counter,locationID) values (%s,%s,%s);"
-    glb_UpdateSales = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s, locationID=%s,dara=%s,productBarcodeID=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
+    glb_UpdateSales = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, amount=%s, dueAmount=%s,typeOfCollection=%s, saleTime=%s, locationID=%s,dara=%s,productBarcodeID=%s,productID=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
     glb_SelectSalesLineExists = "select count(*) from salesmodels where salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
-    glb_UpdateSalesLine = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s,locationID=%s,dara=%s,productBarcodeID=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
-    glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID,dara,productBarcodeID,saleTime) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
-    glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection,dara, salesmodels.productBarcodeID from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s and locationID=%s;"
-    glb_SelectProductByBarcode = "Select productID, productName, productRetailPrice from productmodels where productBarcodeID=%s;"
+    glb_UpdateSalesLine = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, amount=%s, dueAmount=%s, typeOfCollection=%s,locationID=%s,dara=%s,productBarcodeID=%s,productID=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
+    glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,amount,dueAmount,paidAmount,typeOfCollection,locationID,dara,productBarcodeID,saleTime,productID) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
+    glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, amount, productRetailPrice, productName, typeOfCollection,dara, salesmodels.productBarcodeID,salesmodels.productID from salesmodels left outer join products on (salesmodels.productBarcodeID= products.productBarcodeID) where salesId=%s and typeOfCollection=%s and locationID=%s;"
+    glb_SelectProductByBarcode = "select productID, productName, productRetailPrice from order_and_sales.products where productBarcodeID=%s;"
     glb_SelectCustomers = "Select distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = -1 and locationID=%s order by salesID;"
     glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = 0 and locationID=%s order by salesID;"
     glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
     glb_getBarcodeID = "SELECT barcodeID FROM order_and_sales.packagedproductsbarcodes where recstatus=0 LIMIT 1;"
-    glb_update_barcode_as_used = "update order_and_sales.packagedproductsbarcodes set recstatus=1 where barcodeID=%s;"
-    glb_insert_packedprod_items = "insert into order_and_sales.packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, ProductID,recStatus,recDate,customerID) values(%s,%s,%s,%s,%s,%s,%s);"
-    glb_get_packed_details = "SELECT packagedproductdetailsmodel.productID, amount, productName, productRetailPrice FROM order_and_sales.packagedproductdetailsmodel left outer join  productmodels on(packagedproductdetailsmodel.productID=productmodels.productID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
+    glb_update_barcode_as_used = "update order_and_sales.packagedproductsbarcodes set recStatus=1 where barcodeID=%s;"
+    glb_insert_packedprod_items = "insert into order_and_sales.packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, recStatus,recDate,customerID,productBarcodeID,productID) values(%s,%s,%s,%s,%s,%s,%s,%s);"
+    glb_get_packed_details = "SELECT packagedproductdetailsmodel.productBarcodeID, amount, productName, productRetailPrice,packagedproductdetailsmodel.productID FROM order_and_sales.packagedproductdetailsmodel left outer join  products on(packagedproductdetailsmodel.productBarcodeID=products.productBarcodeID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
     glb_Update_Sales_As_Merged = "update salesmodels set typeOfCollection=%s where saleDate=%s and salesID=%s and locationID=%s"
     glb_package_exists = "SELECT count(PackedProductID), PackedProductID FROM order_and_sales.packagedproductdetailsmodel where customerID = %s and DATE_FORMAT(recDate,'%%Y-%%m-%%d') = %s group by PackedProductID"
     """Connection data"""
@@ -285,7 +290,7 @@ class db_interface(object):
             for salesObj in saleList:
                 my_date = datetime.now()
                 saleTime = my_date.strftime('%Y-%m-%d %H:%M:%S.%f')
-                error = db_interface.db_core.execnonesql(db_interface.glb_UpdateSales,(salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.productID, salesObj.amount, destTypeOfCollection, saleTime, locationid, base_weight,salesObj.productBarcodeID, salesObj.salesID, salesObj.salesLineID, srcTypeOfCollection, salesObj.saleDate, locationid,))
+                error = db_interface.db_core.execnonesql(db_interface.glb_UpdateSales,(salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.amount, float(salesObj.retailPrice) * salesObj.amount, destTypeOfCollection, saleTime, locationid, base_weight,salesObj.productBarcodeID, salesObj.productID, salesObj.salesID, salesObj.salesLineID, srcTypeOfCollection, salesObj.saleDate, locationid,))
                 if error != "":
                     break
             if error == "":
@@ -319,8 +324,7 @@ class db_interface(object):
                             if error == "":
                                 lineNo = 1
                                 for salesObj in salesList:
-                                    error = db_interface.db_core.execnonesql(db_interface.glb_insert_packedprod_items,(
-                                                        barcodeID, lineNo, salesObj.amount, salesObj.productID,"0",datetime.now(),salesObj.salesID))
+                                    error = db_interface.db_core.execnonesql(db_interface.glb_insert_packedprod_items, (barcodeID, lineNo, salesObj.amount,"0",datetime.now(),salesObj.salesID,salesObj.productBarcodeID,salesObj.productID))
                                     lineNo = lineNo + 1
                                     if error != "":
                                         break
@@ -377,14 +381,14 @@ class db_interface(object):
                     if rows[0][0] > 0:
                         error = db_interface.db_core.execnonesql(db_interface.glb_UpdateSalesLine,
                                 (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,
-                                salesObj.productID,salesObj.amount, typeOfCollection,glb_locationid,base_weight,salesObj.productBarcodeID, salesObj.personelID,
+                                salesObj.amount, float(salesObj.retailPrice) * salesObj.amount,glb_locationid,base_weight,salesObj.productBarcodeID, salesObj.productID, salesObj.personelID,
                                 salesObj.salesID,salesObj.salesLineID,salesObj.saleDate,locationid))
                     else:
                         paidAmount=0.0
                         error = db_interface.db_core.execnonesql(db_interface.glb_InsertSalesLine,
                                                                  (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID,
-                                                                  salesObj.personelID, salesObj.productID,salesObj.amount,paidAmount,
-                                                                  typeOfCollection,locationid,base_weight,salesObj.productBarcodeID,datetime.now()))
+                                                                  salesObj.personelID, salesObj.amount,float(salesObj.retailPrice) * salesObj.amount, paidAmount,
+                                                                  typeOfCollection,locationid,base_weight,salesObj.productBarcodeID,datetime.now(),salesObj.productID))
                     if error != "":
                         break
                 else:
@@ -419,13 +423,13 @@ class db_interface(object):
                     salesObj.salesID = row[1]
                     salesObj.salesLineID = row[2]
                     salesObj.personelID = row[3]
-                    salesObj.productID = row[4]
-                    salesObj.amount = row[5]
-                    salesObj.retailPrice = row[6]
-                    salesObj.Name = row[7]
-                    salesObj.typeOfCollection = row[8]
-                    salesObj.dara=row[9]
-                    salesObj.productBarcodeID=[10]
+                    salesObj.amount = row[4]
+                    salesObj.retailPrice = row[5]
+                    salesObj.Name = row[6]
+                    salesObj.typeOfCollection = row[7]
+                    salesObj.dara=row[8]
+                    salesObj.productBarcodeID=row[9]
+                    salesObj.productID = row[10]
                     base_weight = salesObj.dara
                     salesList.append(salesObj)
                     sales_line_id = sales_line_id + 1
@@ -455,12 +459,12 @@ class db_interface(object):
                     salesObj.salesID = glb_customer_no
                     salesObj.salesLineID = glb_sales_line_id
                     salesObj.personelID = row[3]
-                    salesObj.productID = row[4]
-                    salesObj.amount = row[5]
-                    salesObj.retailPrice = row[6]
-                    salesObj.Name = row[7]
-                    salesObj.typeOfCollection = row[8]
-                    salesObj.productBarcodeID = [10]
+                    salesObj.amount = row[4]
+                    salesObj.retailPrice = row[5]
+                    salesObj.Name = row[6]
+                    salesObj.typeOfCollection = row[7]
+                    salesObj.productBarcodeID = row[9]
+                    salesObj.productID=row[10]
                     glb_sales.append(salesObj)
                     glb_sales_line_id = glb_sales_line_id + 1
                 error = db_interface.db_core.execnonesql(db_interface.glb_Update_Sales_As_Merged,
@@ -487,27 +491,29 @@ class db_interface(object):
         returnvalue = False
         error = ""
         rows = ()
-
-        if db_interface.interface_up:
-            error, rows = db_interface.db_core.execsql(db_interface.glb_SelectProductByBarcode,(prdct_barcode,))
-            if error == "":
-                if len(rows) > 0:
-                    returnvalue = True
-                    for row in rows:
-                        salesObj.salesID = glb_customer_no
-                        salesObj.salesLineID = glb_sales_line_id
-                        glb_sales_line_id = glb_sales_line_id + 1
-                        salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
-                        salesObj.productID = row[0]
-                        salesObj.amount = 1
-                        salesObj.Name = row[1]
-                        salesObj.retailPrice = row[2]
-                        salesObj.typeOfCollection = 0
-                        salesObj.productBarcodeID=prdct_barcode
+        if glb_employees_selected != '':
+            if db_interface.interface_up:
+                error, rows = db_interface.db_core.execsql(db_interface.glb_SelectProductByBarcode,(prdct_barcode,))
+                if error == "":
+                    if len(rows) > 0:
+                        returnvalue = True
+                        for row in rows:
+                            salesObj.salesID = glb_customer_no
+                            salesObj.salesLineID = glb_sales_line_id
+                            glb_sales_line_id = glb_sales_line_id + 1
+                            salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
+                            salesObj.productID = row[0]
+                            salesObj.amount = 1
+                            salesObj.Name = row[1]
+                            salesObj.retailPrice = row[2]
+                            salesObj.typeOfCollection = 0
+                            salesObj.productBarcodeID=prdct_barcode
+                    else:
+                        db_interface.sql_error(wndHandle, prdct_barcode + " numaralı kayıt bulunamadı.")
                 else:
-                    db_interface.sql_error(wndHandle, prdct_barcode + " numaralı kayıt bulunamadı.")
-            else:
-                db_interface.sql_error(wndHandle, error)
+                    db_interface.sql_error(wndHandle, error)
+        else:
+            self.message_box_text.insert(END, "Çalışan seçilmeden işleme devam edilemez")
         return returnvalue
 
     def get_served_customers(self, wndHandle, activecustomers):
@@ -567,10 +573,10 @@ class db_interface(object):
                 for row in rows:
                     productObj = Product()
                     productObj.teraziID = row[0]
-                    productObj.productID = row[1]
-                    productObj.Name = row[2]
-                    productObj.price = float(row[3])
-                    productObj.productBarcodeID=row[4]
+                    productObj.Name = row[1]
+                    productObj.price = float(row[2])
+                    productObj.productBarcodeID=row[3]
+                    productObj.productID=row[4]
                     product_names.append(productObj)
             else:
                 db_interface.sql_error(wndHandle, error)
@@ -639,13 +645,13 @@ class db_interface(object):
                 for row in rows:
                     salesObj = Sales()
                     salesObj.salesID = glb_customer_no
-                    salesObj.productID = row[0]
                     salesObj.salesLineID=lineID
+                    salesObj.productBarcodeID = row[0]
                     salesObj.amount = row[1]
                     salesObj.Name = row[2]
                     salesObj.retailPrice = row[3]
                     salesObj.typeOfCollection = 0
-                    salesObj.productBarcodeID = barcodeID
+                    salesObj.productID=row[4]
                     salesList.append(salesObj)
                     lineID=lineID+1
             else:
@@ -713,7 +719,7 @@ def print_receipt(barcod_to_be_printed):
         p.cut()
         p.close()
     except Exception as e:
-        returnvalue = "Printer hatası : "+ e.args[0]
+        returnvalue = "Printer hatası : "+ e.msg
     return returnvalue
 
 def maininit(gui, *args, **kwargs):
@@ -836,6 +842,7 @@ class MainWindow(tk.Tk):
         global glb_sales
         global glb_customer_no
         global glb_sales_line_id
+        global glb_employees_selected
         global root
         returnvalue = False
         salesList = None
@@ -847,7 +854,7 @@ class MainWindow(tk.Tk):
         self.prdct_barcode.delete('1.0', END)
         if textdata != "" and len(textdata) >= 12:
             product_code=int(textdata[8:12])
-            if product_code >= 5600 and product_code <= 5710:
+            if product_code >= 5600 and product_code <=5710:
                 returnvalue, salesList = db_interface.get_packaged_products(self, textdata)
                 if returnvalue:
                     for salesItem in salesList:
@@ -856,12 +863,12 @@ class MainWindow(tk.Tk):
                         salesObj.salesLineID = glb_sales_line_id
                         glb_sales_line_id = glb_sales_line_id + 1
                         salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
-                        salesObj.productID = salesItem.productID
                         salesObj.amount = salesItem.amount
                         salesObj.Name = salesItem.Name
                         salesObj.retailPrice = salesItem.retailPrice
                         salesObj.typeOfCollection = 0
                         salesObj.productBarcodeID=salesItem.productBarcodeID
+                        salesObj.productID=salesItem.productID
                         glb_sales.append(salesObj)
             else:
                 salesObj = Sales()
@@ -1514,11 +1521,12 @@ class MainWindow(tk.Tk):
 
         if (glb_customer_no != 0):
             if glb_serialthread.is_alive() == False:
-                glb_serialthread = threading.Thread(target=get_data,
+                if glb_data_entry == 0:
+                    glb_serialthread = threading.Thread(target=get_data,
                                                     args=(self, self.scale_display,))
-                glb_serialthread.daemon = True
-                glb_serialthread.start()
-                time.sleep(2)
+                    glb_serialthread.daemon = True
+                    glb_serialthread.start()
+                    time.sleep(2)
             salesObj = Sales()
             salesObj.Name = btn.cget("text")
             salesObj.salesID = glb_customer_no
@@ -1526,9 +1534,11 @@ class MainWindow(tk.Tk):
             glb_sales_line_id = glb_sales_line_id + 1
             salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
             salesObj.productBarcodeID=[x.productBarcodeID for x in glb_product_names if x.Name == salesObj.Name][0]
+            salesObj.productID=[x.productID for x in glb_product_names if x.Name == salesObj.Name][0]
+            productCode = int(salesObj.productBarcodeID[8:12])
             """if productBarcodeID is 9999 then amount becomes 1. this is used for products where barcode ID does not exists and price does not depend on weight"""
             amountTxt=""
-            if salesObj.productBarcodeID == "9999":
+            if productCode >= 9900 and productCode <=9928:
                 amountTxt="1.0"
             else:
                 amountTxt = self.scale_display.get("1.0", END).strip("\n")
@@ -1539,7 +1549,6 @@ class MainWindow(tk.Tk):
                 self.message_box_text.insert(END, "Miktar bilgisi hatalı")
                 return
             salesObj.retailPrice = [x.price for x in glb_product_names if x.Name == salesObj.Name][0]
-            salesObj.productID = [x.productID for x in glb_product_names if x.Name == salesObj.Name][0]
             salesObj.typeOfCollection = 0
             glb_sales.append(salesObj)
             self.update_products_sold()
@@ -1559,7 +1568,7 @@ class MainWindow(tk.Tk):
         top.geometry("%dx%d+0+0" % (w, h))
         top.attributes("-fullscreen", FALSE)
         # top.geometry("800x480+1571+152")
-        top.title("Terazi Ara Yüzü")
+        top.title("Terazi Ara Yüzü "+"Versiyon:"+glb_version_str)
         top.configure(background="#d9d9d9")
         load_tables()
         """Create frames"""
