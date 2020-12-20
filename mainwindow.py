@@ -456,6 +456,7 @@ class db_interface(object):
         global glb_locationid
         returnvalue=False
         error = ""
+
         rows = ()
 
 
@@ -725,7 +726,7 @@ def print_receipt(barcod_to_be_printed):
         p.cut()
         p.close()
     except Exception as e:
-        returnvalue = "Printer hatası : "+ e.msg
+        returnvalue = "Printer hatası : "+ traceback.format_exc()
     return returnvalue
 
 def maininit(gui, *args, **kwargs):
@@ -1715,7 +1716,7 @@ def get_data(self, scale_display):
                     mydata = "{:10.3f}".format(floatval)
                     mydata = mydata.rjust(13)
                     scale_display.insert(END, mydata)
-                    print(glb_filter_data)
+                    # print(glb_filter_data)
                 else:
                    pass
             except (NameError, TypeError,UnicodeDecodeError,ValueError):
