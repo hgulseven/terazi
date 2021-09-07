@@ -5,7 +5,6 @@ import sys
 import threading
 import time
 import tkinter as tk
-from datetime import datetime
 from tkinter import *
 from tkinter import messagebox
 from tkinter.ttk import *
@@ -13,14 +12,16 @@ import PIL
 import pymysql.cursors
 import requests
 import traceback
-
+import json
+import fnmatch
+import os
 import serial
 from PIL import Image
 from barcode import EAN13
 from barcode.writer import ImageWriter
 from escpos.printer import Usb
 
-glb_version_str = "2.0"
+glb_version_str = "3.0"
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
 glb_filter_data = ""
@@ -32,6 +33,9 @@ glb_employees = []  # employees loaded to this global collection
 glb_sales = []  # sales for the active customer loaded to this collection
 glb_active_served_customers = []  # active customers loaded to this collection
 glb_customers_on_cashier = []  # customers that were sent to cashier. Actively waiting for payment
+glb_taken_customer_numbers =[]
+glb_path = ""
+
 # product frame is used for various selections such as Products, Customers
 # employees, customer callback if the value is
 # 0: employees
@@ -39,7 +43,7 @@ glb_customers_on_cashier = []  # customers that were sent to cashier. Actively w
 # 2: Customers
 # 3:Call back customers
 # this variable is used for next, previous buttons and set when page display content is changed
-glb_webHost = "https://192.168.1.45"
+glb_webHost = "http://192.168.1.45:5497"
 glb_locationid = ""
 glb_customer_window = 0
 glb_serial_object = None
@@ -61,26 +65,94 @@ glb_active_customers_page_count = 0  # paging of active customers buttons displa
 glb_callback_customers_page_count = 0  # paging of callback customers buttons displayed in product frame
 
 def add_to_log(function, err):
-
-    if sys.platform == "win32":
-        logpath = "c:\\users\\hakan\\PycharmProjects\\terazi\\"
-    else:
-        logpath = "/home/pi/PycharmProjects/terazi/"
-    if os.path.isfile(logpath+'log.txt'):
-        fsize = os.stat(logpath+'log.txt').st_size
+    global glb_path
+    if os.path.isfile(glb_path+'log.txt'):
+        fsize = os.stat(glb_path+'log.txt').st_size
         if fsize > 50000:
-            os.rename(logpath+'log.txt', logpath+'log1.txt')
-    with open(logpath+'log.txt', 'a') as the_file:
-        current_date = datetime.now()
+            os.rename(glb_path+'log.txt', glb_path+'log1.txt')
+    with open(glb_path+'log.txt', 'a') as the_file:
+        current_date = datetime.datetime.now()
         the_file.write(current_date.strftime("%Y-%m-%d %H:%M:%S") + " " + function + " " + format(err) + "\n")
     the_file.close()
 
+
+def convert_sales_obj_to_sales_string(salesObj):
+    salesLine = "{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}".format(salesObj.salesID,
+                                                          salesObj.salesLineID,
+                                                          salesObj.saleDate,
+                                                          salesObj.personelID,
+                                                          salesObj.Name,
+                                                          salesObj.productID,
+                                                          salesObj.retailPrice,
+                                                          salesObj.amount,
+                                                          salesObj.typeOfCollection,
+                                                          salesObj.locationID,
+                                                          salesObj.dara,
+                                                          salesObj.productBarcodeID,
+                                                          salesObj.wholeSalePrice)
+    return salesLine
+
+def convert_sales_string_sales_obj(sales_line):
+    sales = sales_line.split("#")
+    sales_obj = Sales()
+    sales_obj.salesID=sales[0]
+    sales_obj.salesLineID = sales[1]
+    sales_obj.saleDate = sales[2]
+    sales_obj.personelID=sales[3]
+    sales_obj.Name = sales[4]
+    sales_obj.producID=sales[5]
+    sales_obj.retailPrice=sales[6]
+    sales_obj.amount=sales[7]
+    sales_obj.typeOfCollection=sales[8]
+    sales_obj.locationID=sales[9]
+    sales_obj.dara=sales[10]
+    sales_obj.productBarcodeID=sales[11]
+    sales_obj.wholeSalePrice= sales[12]
+    return sales_obj
+
+def local_save_for_sale(sales, locationID, base_weight):
+    global glb_path
+    list_of_files = []
+
+    for file in os.listdir(glb_path):
+        if fnmatch.fnmatch(file, 'sales_*'):
+            list_of_files.append(file)
+    current_date = datetime.datetime.now()
+    fname = "sales_"+ current_date.strftime('%Y-%m-%d')
+    for file in list_of_files:
+        if fname != file:
+           os.remove(glb_path+file)
+    fname=glb_path+fname
+
+    f_object = open(fname, "a+")
+    i=1
+    for salesObj in sales:
+        salesObj.salesLineID = i
+        i = i + 1
+        salesLine=convert_sales_obj_to_sales_string(salesObj)+'\n'
+        f_object.write(salesLine)
+    f_object.close()
+
+def get_list_of_saved_sales(customer_list):
+    f_object = open("sales_log.txt", "r")
+    found_sales_id=0
+    for x in f_object:
+        str_sales_line=x
+        salesID = str_sales_line[0:(str_sales_line.find("#", 1))]
+        if salesID != found_sales_id:
+            customer_obj = Customer()
+            customer_obj.Name = salesID
+            customer_list.append(customer_obj)
+            found_sales_id=salesID
+    f_object.close()
+
 class Product(object):
-    def __init__(self, Name=None, price=None, teraziID=None, productBarcodeID=None):
+    def __init__(self, Name=None, price=None, teraziID=None, productBarcodeID=None, wholesaleprice=None):
         self.Name = Name
         self.price = price
         self.teraziID = teraziID
         self.productBarcodeID=productBarcodeID
+        self.wholesaleprice = wholesaleprice
 
 class Customer(object):
     def __init__(self, customer_no=None):
@@ -98,11 +170,11 @@ class Employee(object):
 
 class Sales(object):
     def __init__(self, salesID=None, salesLineID=None, personelID=None, Name=None,
-                 retailPrice=None, amount=None, typeOfCollection=None, productBarcodeID=None, productID=None):
+                 retailPrice=None, amount=None, typeOfCollection=None, productBarcodeID=None, productID=None, wholeSalePrice=None):
         global glb_base_weight
         global glb_locationid
 
-        my_date = datetime.now()
+        my_date = datetime.datetime.now()
         self.saleDate = my_date.strftime('%Y-%m-%d')
         self.salesID = salesID
         self.salesLineID = salesLineID
@@ -122,6 +194,7 @@ class Sales(object):
         self.locationID = glb_locationid
         self.dara = glb_base_weight
         self.productBarcodeID=productBarcodeID
+        self.wholeSalePrice = wholeSalePrice
 
 class SalesCounter(object):
     def __init__(self, salesDate=None, counter=None):
@@ -138,7 +211,8 @@ class SalesCounter(object):
         returnvalue = False
 
         if db_interface.interface_up:
-            my_date = datetime.now()
+            my_date = datetime.datetime.now()
+
             error, rows = db_interface.db_core.execsql(db_interface.glb_SelectCounter, (my_date.strftime('%Y-%m-%d'), glb_locationid,))
             if error == "":
                 number_of_rows = 0
@@ -239,26 +313,26 @@ class db_interface(object):
 
     # queries
     glb_getversion = "select versionstr from versiontable"
-    glb_GetTeraziProducts = "Select  TeraziID, productName, productRetailPrice,barcodeID from teraziscreenmapping left outer join " \
+    glb_GetTeraziProducts = "Select  TeraziID, productName, productRetailPrice,barcodeID, productWholesalePrice from teraziscreenmapping left outer join " \
                             "products on (teraziscreenmapping.barcodeID=products.productBarcodeID) where TeraziID=%s order by screenSeqNo;"
     glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
     glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels;"
-    glb_SelectCounter = "select counter from salescounter where salesDate=%s and locationID=%s;"
+    glb_SelectCounter = "select counter from salescounter where salesDate=%s and locationID=%s for update;"
     glb_UpdateCounter = "Update salescounter set counter=%s where salesDate=%s and locationID=%s;"
     glb_InsertCounter = "insert into salescounter (salesDate, counter,locationID) values (%s,%s,%s);"
-    glb_UpdateSales = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, amount=%s, dueAmount=%s,typeOfCollection=%s, saleTime=%s, locationID=%s,dara=%s,productBarcodeID=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
+    glb_UpdateSales = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, amount=%s, dueAmount=%s,typeOfCollection=%s, saleTime=%s, locationID=%s,dara=%s,productBarcodeID=%s,wholesaleamount=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
     glb_SelectSalesLineExists = "select count(*) from salesmodels where salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
-    glb_UpdateSalesLine = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, amount=%s, dueAmount=%s, typeOfCollection=%s,locationID=%s,dara=%s,productBarcodeID=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
-    glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,amount,dueAmount,paidAmount,typeOfCollection,locationID,dara,productBarcodeID,saleTime) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
-    glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, amount, productRetailPrice, productName, typeOfCollection,dara, salesmodels.productBarcodeID from salesmodels left outer join products on (salesmodels.productBarcodeID= products.productBarcodeID) where salesId=%s and typeOfCollection=%s and locationID=%s;"
-    glb_SelectProductByBarcode = "select productName, productRetailPrice from products where productBarcodeID=%s;"
+    glb_UpdateSalesLine = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, amount=%s, dueAmount=%s, typeOfCollection=%s,locationID=%s,dara=%s,productBarcodeID=%s, wholesaleamount=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
+    glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,amount,dueAmount,paidAmount,typeOfCollection,locationID,dara,productBarcodeID,saleTime,wholesaleamount) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
+    glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, amount, productRetailPrice, productName, typeOfCollection,dara, salesmodels.productBarcodeID, productWholeSalePrice from salesmodels left outer join products on (salesmodels.productBarcodeID= products.productBarcodeID) where saleDate=%s and salesId=%s and typeOfCollection=%s and locationID=%s;"
+    glb_SelectProductByBarcode = "select productName, productRetailPrice, productWholeSalePrice from products where productBarcodeID=%s;"
     glb_SelectCustomers = "Select distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = -1 and locationID=%s order by salesID;"
     glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = 0 and locationID=%s order by salesID;"
     glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
     glb_getBarcodeID = "SELECT barcodeID FROM packagedproductsbarcodes where recstatus=0 LIMIT 1;"
     glb_update_barcode_as_used = "update packagedproductsbarcodes set recStatus=1 where barcodeID=%s;"
     glb_insert_packedprod_items = "insert into packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, recStatus,recDate,customerID,productBarcodeID) values(%s,%s,%s,%s,%s,%s,%s);"
-    glb_get_packed_details = "SELECT packagedproductdetailsmodel.productBarcodeID, amount, productName, productRetailPrice FROM packagedproductdetailsmodel left outer join  products on(packagedproductdetailsmodel.productBarcodeID=products.productBarcodeID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
+    glb_get_packed_details = "SELECT packagedproductdetailsmodel.productBarcodeID, amount, productName, productRetailPrice, productWholeSalePrice FROM packagedproductdetailsmodel left outer join  products on(packagedproductdetailsmodel.productBarcodeID=products.productBarcodeID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
     glb_Update_Sales_As_Merged = "update salesmodels set typeOfCollection=%s where saleDate=%s and salesID=%s and locationID=%s"
     glb_package_exists = "SELECT count(PackedProductID), PackedProductID FROM packagedproductdetailsmodel where customerID = %s and DATE_FORMAT(recDate,'%%Y-%%m-%%d') = %s group by PackedProductID"
     """Connection data"""
@@ -299,9 +373,9 @@ class db_interface(object):
 
         if (db_interface.interface_up):
             for salesObj in saleList:
-                my_date = datetime.now()
+                my_date = datetime.datetime.now()
                 saleTime = my_date.strftime('%Y-%m-%d %H:%M:%S.%f')
-                error = db_interface.db_core.execnonesql(db_interface.glb_UpdateSales,(salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.amount, float(salesObj.retailPrice) * salesObj.amount, destTypeOfCollection, saleTime, locationid, base_weight,salesObj.productBarcodeID, salesObj.salesID, salesObj.salesLineID, srcTypeOfCollection, salesObj.saleDate, locationid,))
+                error = db_interface.db_core.execnonesql(db_interface.glb_UpdateSales,(salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.amount, float(salesObj.retailPrice) * salesObj.amount, destTypeOfCollection, saleTime, locationid, base_weight,salesObj.productBarcodeID,float(salesObj.wholeSalePrice) * salesObj.amount, salesObj.salesID, salesObj.salesLineID, srcTypeOfCollection, salesObj.saleDate, locationid,))
                 if error != "":
                     break
             if error == "":
@@ -323,7 +397,7 @@ class db_interface(object):
 #    /* Get barcode ID for prepared package */
 #   /* add products to prepered packaged table */
         if db_interface.interface_up:
-            my_date = datetime.now()
+            my_date = datetime.datetime.now()
             error, rows = db_interface.db_core.execsql(db_interface.glb_package_exists,(salesList[0].salesID, my_date.strftime('%Y-%m-%d')))
             if error == "":
                 if len(rows)==0:
@@ -335,7 +409,7 @@ class db_interface(object):
                             if error == "":
                                 lineNo = 1
                                 for salesObj in salesList:
-                                    error = db_interface.db_core.execnonesql(db_interface.glb_insert_packedprod_items, (barcodeID, lineNo, salesObj.amount,"0",datetime.now(),salesObj.salesID,salesObj.productBarcodeID))
+                                    error = db_interface.db_core.execnonesql(db_interface.glb_insert_packedprod_items, (barcodeID, lineNo, salesObj.amount,"0",datetime.datetime.now(),salesObj.salesID,salesObj.productBarcodeID))
                                     lineNo = lineNo + 1
                                     if error != "":
                                         break
@@ -363,7 +437,7 @@ class db_interface(object):
         error = ""
 
         if db_interface.interface_up:
-            my_date = datetime.now()
+            my_date = datetime.datetime.now()
             saleDate = my_date.strftime('%Y-%m-%d')
             error = db_interface.db_core.execnonesql(db_interface.glb_salesDelete,(saleDate,salesID,glb_locationid,))
             if error == "":
@@ -392,14 +466,14 @@ class db_interface(object):
                     if rows[0][0] > 0:
                         error = db_interface.db_core.execnonesql(db_interface.glb_UpdateSalesLine,
                                 (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,
-                                salesObj.amount, float(salesObj.retailPrice) * salesObj.amount,glb_locationid,base_weight,salesObj.productBarcodeID, salesObj.personelID,
+                                salesObj.amount, float(salesObj.retailPrice) * salesObj.amount,glb_locationid,base_weight,salesObj.productBarcodeID,float(salesObj.wholeSalePrice)*salesObj.amount, salesObj.personelID,
                                 salesObj.salesID,salesObj.salesLineID,salesObj.saleDate,locationid))
                     else:
                         paidAmount=0.0
                         error = db_interface.db_core.execnonesql(db_interface.glb_InsertSalesLine,
                                                                  (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID,
                                                                   salesObj.personelID, salesObj.amount,float(salesObj.retailPrice) * salesObj.amount, paidAmount,
-                                                                  typeOfCollection,locationid,base_weight,salesObj.productBarcodeID,datetime.now()))
+                                                                  typeOfCollection,locationid,base_weight,salesObj.productBarcodeID,datetime.datetime.now(),float(salesObj.wholeSalePrice)*salesObj.amount))
                     if error != "":
                         break
                 else:
@@ -422,7 +496,7 @@ class db_interface(object):
         rows = None
 
         if db_interface.interface_up:
-            error,rows = db_interface.db_core.execsql(db_interface.glb_SelectSales,(salesID,typeOfCollection,locationid))
+            error,rows = db_interface.db_core.execsql(db_interface.glb_SelectSales,(datetime.datetime.now().strftime('%Y-%m-%d'), salesID,typeOfCollection,locationid))
             if error == "":
                 returnvalue=True
                 salesList.clear()
@@ -440,6 +514,7 @@ class db_interface(object):
                     salesObj.typeOfCollection = row[7]
                     salesObj.dara=row[8]
                     salesObj.productBarcodeID=row[9]
+                    salesObj.wholeSalePrice = row[10]
                     base_weight = salesObj.dara
                     salesList.append(salesObj)
                     sales_line_id = sales_line_id + 1
@@ -462,7 +537,7 @@ class db_interface(object):
 
         if db_interface.interface_up:
             error, rows = db_interface.db_core.execsql(db_interface.glb_SelectSales,
-                                        (merge_customer_no, typeOfCollection, glb_locationid))
+                                        (datetime.datetime.now().strftime('%Y-%m-%d'), merge_customer_no, typeOfCollection, glb_locationid))
             if error == "":
                 for row in rows:
                     salesObj = Sales()
@@ -475,6 +550,7 @@ class db_interface(object):
                     salesObj.Name = row[6]
                     salesObj.typeOfCollection = row[7]
                     salesObj.productBarcodeID = row[9]
+                    salesObj.wholeSalePrice = row[10]
                     glb_sales.append(salesObj)
                     glb_sales_line_id = glb_sales_line_id + 1
                 error = db_interface.db_core.execnonesql(db_interface.glb_Update_Sales_As_Merged,
@@ -515,6 +591,7 @@ class db_interface(object):
                             salesObj.amount = 1
                             salesObj.Name = row[0]
                             salesObj.retailPrice = row[1]
+                            salesObj.wholeSalePrice = row[2]
                             salesObj.typeOfCollection = 0
                             salesObj.productBarcodeID=prdct_barcode
                     else:
@@ -532,7 +609,7 @@ class db_interface(object):
         rows= ()
 
         if db_interface.interface_up:
-            my_date = datetime.now()
+            my_date = datetime.datetime.now()
             saleDate = my_date.strftime('%Y-%m-%d')
             error, rows = db_interface.db_core.execsql(db_interface.glb_SelectCustomers, (saleDate, glb_locationid,))
             if error == "":
@@ -554,7 +631,7 @@ class db_interface(object):
         rows = ()
 
         if db_interface.interface_up:
-            my_date = datetime.now()
+            my_date = datetime.datetime.now()
             saleDate = my_date.strftime('%Y-%m-%d')
             error, rows = db_interface.db_core.execsql(db_interface.glb_SelectCustomersOnCashier, (saleDate, locationid,))
             if error == "":
@@ -585,6 +662,7 @@ class db_interface(object):
                     productObj.Name = row[1]
                     productObj.price = float(row[2])
                     productObj.productBarcodeID=row[3]
+                    productObj.wholeSalePrice = float(row[4])
                     product_names.append(productObj)
             else:
                 db_interface.sql_error(wndHandle, error)
@@ -658,6 +736,7 @@ class db_interface(object):
                     salesObj.amount = row[1]
                     salesObj.Name = row[2]
                     salesObj.retailPrice = row[3]
+                    salesObj.wholeSalePrice = row[4]
                     salesObj.typeOfCollection = 0
                     salesList.append(salesObj)
                     lineID=lineID+1
@@ -699,7 +778,7 @@ def print_receipt(barcod_to_be_printed):
         p.codepage='cp857'
         p.text("\n")
         p._raw(b'\x1b\x61\x01')  # center printing
-        today = datetime.now()
+        today = datetime.datetime.now()
         p.text(today.strftime('%Y-%m-%d %H:%M:%S.%f') + '\n')
         p._raw(b'\x1b\x44\x01\x12\x19\x00\n') # set tab stops for output
         toplam=0
@@ -876,6 +955,7 @@ class MainWindow(tk.Tk):
                         salesObj.typeOfCollection = 0
                         salesObj.productBarcodeID=salesItem.productBarcodeID
                         salesObj.productID=salesItem.productID
+                        salesObj.wholeSalePrice=salesItem.wholeSalePrice
                         glb_sales.append(salesObj)
             else:
                 salesObj = Sales()
@@ -1219,13 +1299,13 @@ class MainWindow(tk.Tk):
 
         root.config(cursor="watch")
         root.update()
+        local_save_for_sale(glb_sales, glb_locationid, glb_base_weight)
         if (db_interface.sales_hard_delete(self, glb_customer_no)):
             if db_interface.sales_save(self, 0, glb_sales,glb_locationid,glb_base_weight):
                 glb_sales.clear()
                 self.update_products_sold()
                 if glb_customer_window==1:
                     self.update_products_sold_for_customer()
-                glb_customer_no = 0
                 glb_sales_line_id = 1
                 self.customer_no.delete('1.0', END)
                 self.customer_no.insert(END, "0")
@@ -1254,7 +1334,6 @@ class MainWindow(tk.Tk):
             glb_serialthread.daemon = True
             glb_serialthread.start()
         glb_sales.clear()
-        glb_customer_no = 0
         self.update_products_sold()
         if glb_customer_window ==1:
             self.update_products_sold_for_customer()
@@ -1307,25 +1386,63 @@ class MainWindow(tk.Tk):
         self.call_back_customer_frame_def()
         root.config(cursor="")
 
+    def check_if_customer_no_used(self):
+        last_used_index = len(glb_taken_customer_numbers) - 1
+        if len(glb_taken_customer_numbers) > 3:
+            last_used_index = len(glb_taken_customer_numbers)-3
+        else:
+            if len(glb_taken_customer_numbers) > 1:
+                last_used_index = len(glb_taken_customer_numbers) - 1
+
+        if last_used_index > 0:
+            while 1:
+                error, rows = db_interface.db_core.execsql(db_interface.glb_SelectSalesLineExists, (
+                            glb_taken_customer_numbers[last_used_index], 1, datetime.datetime.now().strftime('%Y-%m-%d'), glb_locationid))
+                if (rows[0][0]>0):
+                    last_used_index=last_used_index+1
+                else:
+                    break
+                if last_used_index == len(glb_taken_customer_numbers):
+                    last_used_index = len(glb_taken_customer_numbers)-1
+                    break
+        return last_used_index
+
     def new_customer_clicked(self):
         global top
         global glb_sales_line_id
         global glb_employees_selected
         global glb_customer_no
         global root
+        global glb_taken_customer_numbers
+        get_new_customer_no=False
 
         root.config(cursor="watch")
         root.update()
-        salescounterobj = SalesCounter()
-        returnvalue, temp = salescounterobj.get_counter(self)
-        if temp != -1:
-            self.message_box_text.delete("1.0", END)
-            glb_sales.clear()
-            glb_customer_no=temp
-            self.customer_no.delete('1.0', END)
-            self.customer_no.insert(END, glb_customer_no)
-            glb_sales_line_id = 1
-            self.product_frame_def()
+        if glb_customer_no != 0:
+            temp = glb_taken_customer_numbers[self.check_if_customer_no_used()]
+            if temp < 0:
+                get_new_customer_no = True
+            else:
+                error, rows = db_interface.db_core.execsql(db_interface.glb_SelectSalesLineExists, (temp,1,datetime.datetime.now().strftime('%Y-%m-%d'),glb_locationid))
+                if error =="":
+                    if rows[0][0] > 0:
+                        get_new_customer_no=True
+        else:
+            get_new_customer_no=True
+        if get_new_customer_no:
+            salescounterobj = SalesCounter()
+            returnvalue, temp = salescounterobj.get_counter(self)
+            if temp == -1:
+               return
+            glb_taken_customer_numbers.append(temp)
+        self.message_box_text.delete("1.0", END)
+        glb_sales.clear()
+        glb_customer_no = temp
+        self.update_products_sold()
+        self.customer_no.delete('1.0', END)
+        self.customer_no.insert(END, glb_customer_no)
+        glb_sales_line_id = 1
+        self.product_frame_def()
         root.config(cursor="")
 
     def btn_cancelsale_clicked(self):
@@ -1346,7 +1463,6 @@ class MainWindow(tk.Tk):
                 self.customer_no.delete('1.0', END)
                 self.customer_no.insert(END, "0")
                 glb_sales_line_id = 1
-                glb_customer_no = 0
                 self.new_customer_clicked()
                 self.btn_cleardara_clicked()
         root.config(cursor="")
@@ -1360,6 +1476,7 @@ class MainWindow(tk.Tk):
 
         root.config(cursor="watch")
         root.update()
+        local_save_for_sale(glb_sales,glb_locationid,glb_base_weight)
         if db_interface.sales_hard_delete(self, glb_customer_no):
             if db_interface.sales_save(self, -1,glb_sales,glb_locationid, glb_base_weight):
 #        self.message_box_text.delete("1.0", END)
@@ -1556,6 +1673,7 @@ class MainWindow(tk.Tk):
                 self.message_box_text.insert(END, "Miktar bilgisi hatalı")
                 return
             salesObj.retailPrice = [x.price for x in glb_product_names if x.Name == salesObj.Name][0]
+            salesObj.wholeSalePrice= [x.wholeSalePrice for x in glb_product_names if x.Name == salesObj.Name][0]
             salesObj.typeOfCollection = 0
             glb_sales.append(salesObj)
             self.update_products_sold()
@@ -1744,6 +1862,11 @@ if __name__ == '__main__':
         glb_customer_window=int(myargs["-customerwindow"])
     if ("-location" in myargs.keys() ):
         glb_locationid = myargs["-location"]
+    if sys.platform == "win32":
+        glb_path = "c:\\users\\hakan\\PycharmProjects\\terazi\\"
+    else:
+        glb_path = "/home/pi/PycharmProjects/terazi/"
+
     db_interface = db_interface()
     db_interface.wait_for_sql()
     if (glb_version_str == db_interface.get_version()):
