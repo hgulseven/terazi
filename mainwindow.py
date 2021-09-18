@@ -269,6 +269,7 @@ class dbCore(object):
         error= ""
         rows = None
         try:
+            dbCore.commit(self)
             dbCore.cursor.execute(sql_command, sql_params)
             rows = dbCore.cursor.fetchall()
         except Exception as e:
