@@ -43,7 +43,7 @@ glb_path = ""
 # 2: Customers
 # 3:Call back customers
 # this variable is used for next, previous buttons and set when page display content is changed
-glb_webHost = "http://192.168.1.45:5497"
+glb_webHost = "http://192.168.1.45"
 glb_locationid = ""
 glb_customer_window = 0
 glb_serial_object = None
@@ -316,7 +316,7 @@ class db_interface(object):
     glb_GetTeraziProducts = "Select  TeraziID, productName, productRetailPrice,barcodeID, productWholesalePrice from teraziscreenmapping left outer join " \
                             "products on (teraziscreenmapping.barcodeID=products.productBarcodeID) where TeraziID=%s order by screenSeqNo;"
     glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
-    glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels;"
+    glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels where userActive=0;"
     glb_SelectCounter = "select counter from salescounter where salesDate=%s and locationID=%s for update;"
     glb_UpdateCounter = "Update salescounter set counter=%s where salesDate=%s and locationID=%s;"
     glb_InsertCounter = "insert into salescounter (salesDate, counter,locationID) values (%s,%s,%s);"
@@ -326,7 +326,7 @@ class db_interface(object):
     glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,amount,dueAmount,paidAmount,typeOfCollection,locationID,dara,productBarcodeID,saleTime,wholesaleamount) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
     glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, amount, productRetailPrice, productName, typeOfCollection,dara, salesmodels.productBarcodeID, productWholeSalePrice from salesmodels left outer join products on (salesmodels.productBarcodeID= products.productBarcodeID) where saleDate=%s and salesId=%s and typeOfCollection=%s and locationID=%s;"
     glb_SelectProductByBarcode = "select productName, productRetailPrice, productWholeSalePrice from products where productBarcodeID=%s;"
-    glb_SelectCustomers = "Select distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = -1 and locationID=%s order by salesID;"
+    glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 and saleDate=%s and locationID=%s order by salesID;"
     glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = 0 and locationID=%s order by salesID;"
     glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
     glb_getBarcodeID = "SELECT barcodeID FROM packagedproductsbarcodes where recstatus=0 LIMIT 1;"
@@ -611,7 +611,7 @@ class db_interface(object):
         if db_interface.interface_up:
             my_date = datetime.datetime.now()
             saleDate = my_date.strftime('%Y-%m-%d')
-            error, rows = db_interface.db_core.execsql(db_interface.glb_SelectCustomers, (saleDate, glb_locationid,))
+            error, rows = db_interface.db_core.execsql(db_interface.glb_SelectCustomers, (saleDate, glb_locationid))
             if error == "":
                 returnvalue=True
                 activecustomers.clear()
@@ -871,12 +871,10 @@ class MainWindow(tk.Tk):
         global glb_active_served_customers
         global top
         global glb_active_product_frame_content
-
         glb_active_product_frame_content = 2
         if db_interface.get_served_customers(self, glb_active_served_customers):
             varfunc = self.customer_button_clicked
             self.add_frame_buttons(1, self.product_frame, glb_active_served_customers,glb_active_customers_page_count,varfunc)
-
 
     def call_back_customer_frame_def(self):
         global glb_customers_on_cashier
@@ -1318,6 +1316,7 @@ class MainWindow(tk.Tk):
                 self.new_customer_clicked()
         root.config(cursor="")
 
+
     def btn_change_user_clicked(self):
         global top
         global glb_employees_selected
@@ -1325,6 +1324,7 @@ class MainWindow(tk.Tk):
         global root
         global glb_serialthread
         global glb_merge_customer_flag
+        global glb_active_served_customers
 
         root.config(cursor="watch")
         root.update()
@@ -1563,6 +1563,7 @@ class MainWindow(tk.Tk):
         global glb_sales_line_id
         global glb_sales
         global glb_customer_no
+        global glb_active_served_customers
         returnvalue = False
 
         root.config(cursor="watch")
