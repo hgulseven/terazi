@@ -307,11 +307,6 @@ class dbCore(object):
         dbCore.conn.close()
 
 class db_interface(object):
-
-
-
-
-
     # queries
     glb_getversion = "select versionstr from versiontable"
     glb_GetTeraziProducts = "Select  TeraziID, productName, productRetailPrice,barcodeID, productWholesalePrice from teraziscreenmapping left outer join " \
@@ -458,9 +453,11 @@ class db_interface(object):
 
         if db_interface.interface_up:
             i=1
+            # renumber sales line id's: if sequence numbers are scaterred this part corrects it
             for salesObj in saleList:
                 salesObj.salesLineID = i
                 i=i+1
+
             for salesObj in saleList:
                 error, rows = db_interface.db_core.execsql(db_interface.glb_SelectSalesLineExists,(salesObj.salesID,salesObj.salesLineID, salesObj.saleDate,locationid))
                 if error == "":
@@ -528,7 +525,6 @@ class db_interface(object):
     def sales_merge(self,wndHandle, merge_customer_no, typeOfCollection,glb_sales):
         global glb_customer_no
         global glb_sales_line_id
-        global glb_customer_no
         global glb_locationid
         returnvalue=False
         error = ""
@@ -1329,6 +1325,7 @@ class MainWindow(tk.Tk):
 
         root.config(cursor="watch")
         root.update()
+        # if there is serial port error then thread stops execution each time change user clicked thread checked and restarted if necessaary
         if glb_serialthread.is_alive() == False:
             glb_serialthread = threading.Thread(target=get_data,
                                                 args=(self, self.scale_display,))
@@ -1388,25 +1385,24 @@ class MainWindow(tk.Tk):
         root.config(cursor="")
 
     def check_if_customer_no_used(self):
-        last_used_index = len(glb_taken_customer_numbers) - 1
-        if len(glb_taken_customer_numbers) > 3:
-            last_used_index = len(glb_taken_customer_numbers)-3
-        else:
-            if len(glb_taken_customer_numbers) > 1:
-                last_used_index = len(glb_taken_customer_numbers) - 1
 
-        if last_used_index > 0:
-            while 1:
+        used_count = len(glb_taken_customer_numbers)
+        if used_count > 0:
+            notfound=False
+            for last_used_index in range(used_count):
                 error, rows = db_interface.db_core.execsql(db_interface.glb_SelectSalesLineExists, (
                             glb_taken_customer_numbers[last_used_index], 1, datetime.datetime.now().strftime('%Y-%m-%d'), glb_locationid))
-                if (rows[0][0]>0):
-                    last_used_index=last_used_index+1
-                else:
+                if (rows[0][0]==0):
+                    notfound=True
                     break
-                if last_used_index == len(glb_taken_customer_numbers):
-                    last_used_index = len(glb_taken_customer_numbers)-1
-                    break
-        return last_used_index
+            if notfound == False:
+                last_used_index=last_used_index+1
+            for remove_used_ones in range(last_used_index):
+                glb_taken_customer_numbers.remove(glb_taken_customer_numbers[0])
+        available_customer_number_index=0
+        if len(glb_taken_customer_numbers) == 0:
+           available_customer_number_index=-1
+        return available_customer_number_index
 
     def new_customer_clicked(self):
         global top
@@ -1420,10 +1416,11 @@ class MainWindow(tk.Tk):
         root.config(cursor="watch")
         root.update()
         if glb_customer_no != 0:
-            temp = glb_taken_customer_numbers[self.check_if_customer_no_used()]
+            temp = self.check_if_customer_no_used()
             if temp < 0:
                 get_new_customer_no = True
             else:
+                temp=glb_taken_customer_numbers[temp]
                 error, rows = db_interface.db_core.execsql(db_interface.glb_SelectSalesLineExists, (temp,1,datetime.datetime.now().strftime('%Y-%m-%d'),glb_locationid))
                 if error =="":
                     if rows[0][0] > 0:
@@ -1868,6 +1865,7 @@ if __name__ == '__main__':
         glb_path = "c:\\users\\hakan\\PycharmProjects\\terazi\\"
     else:
         glb_path = "/home/pi/PycharmProjects/terazi/"
+
 
     db_interface = db_interface()
     db_interface.wait_for_sql()
