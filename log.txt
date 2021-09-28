@@ -1,0 +1,54 @@
+2020-09-09 13:49:51 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (10060)
+2020-10-03 11:10:40 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-03 11:10:57 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-03 11:11:10 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-06 15:09:35 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-06 15:09:50 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-06 15:13:10 get_product_based_on_barcod 8693819080381 kayýt Buulunamadý
+2020-10-06 15:13:16 get_product_based_on_barcod 8693819080381 kayýt Buulunamadý
+2020-10-06 15:13:21 get_product_based_on_barcod 8693819080381 kayýt Buulunamadý
+2020-10-06 15:13:41 get_product_based_on_barcod 8693819080381 kayýt Buulunamadý
+2020-10-06 15:14:07 get_product_based_on_barcod 8693819080381 kayýt Buulunamadý
+2020-10-22 14:18:13 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 14:54:45 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 14:55:03 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 14:57:06 sales_save DBHatasý :Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 15:05:26 sales_hard_delete DBHatasý :Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 21:02:00 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 21:02:15 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 22:03:10 sales_hard_delete DBHatasý :Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 22:05:10 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 22:05:26 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 22:07:10 sales_save DBHatasý :Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 22:10:32 sales_save DBHatasý :Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 22:18:05 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-10-22 22:18:35 wait_for_sql Can't connect to MySQL server on '192.168.1.45' (timed out)
+2020-12-16 20:24:59 sendToCahsier SignalRErr :HTTPConnectionPool(host='localhost', port=5497): Max retries exceeded with url: /api/DataRefresh (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x00000221172935C0>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+2021-09-06 13:22:05 sendToCahsier SignalRErr :HTTPConnectionPool(host='192.168.1.45', port=5497): Max retries exceeded with url: /api/DataRefresh (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001BE65E5D6D8>: Failed to establish a new connection: [WinError 10060] Baðlanýlan uygun olarak belli bir süre içinde yanýt vermediðinden veya kurulan\r\nbaðlantý baðlanýlan ana bilgisayar yanýt vermediðinden bir baðlantý kurulamadý'))
+2021-09-07 13:57:19 sendToCahsier SignalRErr :HTTPConnectionPool(host='192.168.1.45', port=5497): Max retries exceeded with url: /api/DataRefresh (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x0000020F044DDEF0>: Failed to establish a new connection: [WinError 10060] Baðlanýlan uygun olarak belli bir süre içinde yanýt vermediðinden veya kurulan\r\nbaðlantý baðlanýlan ana bilgisayar yanýt vermediðinden bir baðlantý kurulamadý'))
+2021-09-07 15:17:23 sendToCahsier SignalRErr :HTTPConnectionPool(host='192.168.1.45', port=5497): Max retries exceeded with url: /api/DataRefresh (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x00000168D65117B8>: Failed to establish a new connection: [WinError 10060] Baðlanýlan uygun olarak belli bir süre içinde yanýt vermediðinden veya kurulan\r\nbaðlantý baðlanýlan ana bilgisayar yanýt vermediðinden bir baðlantý kurulamadý'))
+2021-09-07 15:25:59 sendToCahsier SignalRErr :HTTPConnectionPool(host='192.168.1.45', port=5497): Max retries exceeded with url: /api/DataRefresh (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001E148F2EAC8>: Failed to establish a new connection: [WinError 10060] Baðlanýlan uygun olarak belli bir süre içinde yanýt vermediðinden veya kurulan\r\nbaðlantý baðlanýlan ana bilgisayar yanýt vermediðinden bir baðlantý kurulamadý'))
+2021-09-07 15:39:48 sendToCahsier SignalRErr :HTTPConnectionPool(host='192.168.1.45', port=5497): Max retries exceeded with url: /api/DataRefresh (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x0000020848349400>: Failed to establish a new connection: [WinError 10060] Baðlanýlan uygun olarak belli bir süre içinde yanýt vermediðinden veya kurulan\r\nbaðlantý baðlanýlan ana bilgisayar yanýt vermediðinden bir baðlantý kurulamadý'))
+2021-09-07 15:54:44 sendToCahsier SignalRErr :HTTPConnectionPool(host='192.168.1.45', port=5497): Max retries exceeded with url: /api/DataRefresh (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x0000018997191828>: Failed to establish a new connection: [WinError 10060] Baðlanýlan uygun olarak belli bir süre içinde yanýt vermediðinden veya kurulan\r\nbaðlantý baðlanýlan ana bilgisayar yanýt vermediðinden bir baðlantý kurulamadý'))
+2021-09-07 16:25:29 sendToCahsier SignalRErr :HTTPConnectionPool(host='192.168.1.45', port=5497): Max retries exceeded with url: /api/DataRefresh (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001E561B93C88>: Failed to establish a new connection: [WinError 10060] Baðlanýlan uygun olarak belli bir süre içinde yanýt vermediðinden veya kurulan\r\nbaðlantý baðlanýlan ana bilgisayar yanýt vermediðinden bir baðlantý kurulamadý'))
+2021-09-07 17:36:01 sendToCahsier SignalRErr :HTTPConnectionPool(host='192.168.1.45', port=5497): Max retries exceeded with url: /api/DataRefresh (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000002686AA8D320>: Failed to establish a new connection: [WinError 10060] Baðlanýlan uygun olarak belli bir süre içinde yanýt vermediðinden veya kurulan\r\nbaðlantý baðlanýlan ana bilgisayar yanýt vermediðinden bir baðlantý kurulamadý'))
+2021-09-14 13:08:48 customer_frame_def before getting served customers
+2021-09-14 13:11:09 customer_frame_def before getting served customers
+2021-09-14 13:11:09 customer_frame_def after getting served customers
+2021-09-14 13:12:05 customer_frame_def before getting served customers
+2021-09-14 13:12:15 customer_frame_def after getting served customers
+2021-09-14 13:18:41 customer_frame_def before getting served customers
+2021-09-14 13:18:44 customer_frame_def after getting served customers
+2021-09-14 13:18:52 customer_frame_def after adding frame buttons
+2021-09-14 13:19:11 customer_frame_def before getting served customers
+2021-09-14 13:19:11 customer_frame_def after getting served customers
+2021-09-14 13:21:01 customer_frame_def before getting served customers
+2021-09-14 13:21:02 customer_frame_def after getting served customers
+2021-09-14 13:22:59 customer_frame_def before getting served customers
+2021-09-14 13:23:00 customer_frame_def after getting served customers
+2021-09-14 13:23:04 customer_frame_def First customer in the list1
+2021-09-14 13:23:10 customer_frame_def after adding frame buttons
+2021-09-14 13:25:11 customer_frame_def before getting served customers
+2021-09-14 13:25:11 customer_frame_def after getting served customers=1
+2021-09-14 13:25:11 customer_frame_def First customer in the list1
+2021-09-14 13:25:11 customer_frame_def after adding frame buttons
