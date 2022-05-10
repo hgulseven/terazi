@@ -1,66 +1,30 @@
 import datetime
+import decimal
 import os
+import sys
 import threading
 import time
 import tkinter as tk
-from datetime import datetime
-from io import BytesIO
 from tkinter import *
 from tkinter import messagebox
 from tkinter.ttk import *
-import requests
-import serial
-import pymysql
-from escpos.printer import Usb
-import usb.core
-import usb.util
-import usb.backend.libusb1
-import barcode
-from barcode.writer import ImageWriter
-from barcode import EAN13
 import PIL
+import pymysql.cursors
+import requests
+import traceback
+import json
+import fnmatch
+import os
+import serial
 from PIL import Image
+from barcode import EAN13
+from barcode.writer import ImageWriter
+from escpos.printer import Usb
 
-"""Connection data"""
-glb_host = "192.168.1.45"
-glb_webHost = "192.168.1.45"
-glb_database = "order_and_sales_management"
-glb_user = "hakan"
-glb_password = "QAZwsx135"
-glb_locationid = ""
-glb_customer_window = 0
-glb_serial_object = None
-glb_serialthread = None
-
-w = None
-top_level=None
-root = None
-
-# queries
-glb_GetTeraziProducts = "Select  TeraziID, productmodels.productID, productName, productRetailPrice,productBarcodeID from productmodels left outer join " \
-                        "teraziscreenmapping on (teraziscreenmapping.productID=productmodels.productID) where TeraziID=%s order by screenSeqNo;"
-glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
-glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels;"
-glb_SelectCounter = "select counter from salescounter where salesDate=%s and locationID=%s;"
-glb_UpdateCounter = "Update salescounter set counter=%s where salesDate=%s and locationID=%s;"
-glb_InsertCounter = "insert into salescounter (salesDate, counter,locationID) values (%s,%s,%s);"
-glb_UpdateSales = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s, typeOfCollection=%s, saleTime=%s, locationID=%s,dara=%s,productBarcodeID=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
-glb_SelectSalesLineExists = "select count(*) from salesmodels where salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
-glb_UpdateSalesLine = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, productID=%s, amount=%s,typeOfCollection=%s,locationID=%s,dara=%s,productBarcodeID=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
-glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,productID,amount,paidAmount,typeOfCollection,locationID,dara,productBarcodeID) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
-glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, salesmodels.productID, amount, productRetailPrice, productName, typeOfCollection,dara, salesmodels.productBarcodeID from salesmodels left outer join productmodels on (salesmodels.productID= productmodels.productID) where salesId=%s and typeOfCollection=%s and locationID=%s;"
-glb_SelectProductByBarcode = "Select productID, productName, productRetailPrice from productmodels where productBarcodeID=%s;"
-glb_SelectCustomers = "Select distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = -1 and locationID=%s order by salesID;"
-glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = 0 and locationID=%s order by salesID;"
-glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
-glb_getBarcodeID ="SELECT barcodeID FROM order_and_sales_management.packagedproductsbarcodes where recstatus=0 LIMIT 1;"
-glb_update_barcode_as_used = "update order_and_sales_management.packagedproductsbarcodes set recstatus=1 where barcodeID=%s;"
-glb_insert_packedprod_items = "insert into order_and_sales_management.packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, ProductID,recStatus,recDate) values(%s,%s,%s,%s,%s,%s);"
-glb_get_packed_details = "SELECT packagedproductdetailsmodel.productID, amount, productName, productRetailPrice FROM order_and_sales_management.packagedproductdetailsmodel left outer join  productmodels on(packagedproductdetailsmodel.productID=productmodels.productID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
-glb_windows_env = 0  # 1 Windows 0 Linux
+glb_version_str = "3.0"
 glb_cursor = 0  # global cursor for db access. Initialized in load_products
 glb_customer_no = 0  # customer no is got by using salescounter table.
-glb_filter_data =""
+glb_filter_data = ""
 glb_screensize = 1200
 top = None
 glb_product_names = []  # products are loaded to memory based on rayon
@@ -69,6 +33,9 @@ glb_employees = []  # employees loaded to this global collection
 glb_sales = []  # sales for the active customer loaded to this collection
 glb_active_served_customers = []  # active customers loaded to this collection
 glb_customers_on_cashier = []  # customers that were sent to cashier. Actively waiting for payment
+glb_taken_customer_numbers =[]
+glb_path = ""
+
 # product frame is used for various selections such as Products, Customers
 # employees, customer callback if the value is
 # 0: employees
@@ -76,6 +43,17 @@ glb_customers_on_cashier = []  # customers that were sent to cashier. Actively w
 # 2: Customers
 # 3:Call back customers
 # this variable is used for next, previous buttons and set when page display content is changed
+glb_webHost = "http://192.168.1.45"
+glb_locationid = ""
+glb_customer_window = 0
+glb_serial_object = None
+glb_serialthread = None
+glb_merge_customer_flag = None
+MERGE_CUSTOMERS = 1
+w = None
+top_level=None
+root = None
+
 glb_active_product_frame_content = 0  # shows contents of product frame which is used more than one purpose
 glb_scaleId = 0
 glb_employees_selected = ''  # name of the selected employee.
@@ -86,112 +64,129 @@ glb_employees_page_count = 0  # paging of employee buttons displayed in product 
 glb_active_customers_page_count = 0  # paging of active customers buttons displayed in product frame
 glb_callback_customers_page_count = 0  # paging of callback customers buttons displayed in product frame
 
-
 def add_to_log(function, err):
-    global glb_windows_env
-
-    if glb_windows_env == 1:
-        logpath = "c:\\users\\hakan\\PycharmProjects\\terazi\\"
-    else:
-        logpath = "/home/pi/PycharmProjects/terazi/"
-    if os.path.isfile(logpath+'log.txt'):
-        fsize = os.stat(logpath+'log.txt').st_size
+    global glb_path
+    if os.path.isfile(glb_path+'log.txt'):
+        fsize = os.stat(glb_path+'log.txt').st_size
         if fsize > 50000:
-            os.rename(logpath+'log.txt', logpath+'log1.txt')
-    with open(logpath+'log.txt', 'a') as the_file:
-        current_date = datetime.now()
+            os.rename(glb_path+'log.txt', glb_path+'log1.txt')
+    with open(glb_path+'log.txt', 'a') as the_file:
+        current_date = datetime.datetime.now()
         the_file.write(current_date.strftime("%Y-%m-%d %H:%M:%S") + " " + function + " " + format(err) + "\n")
     the_file.close()
 
 
+def convert_sales_obj_to_sales_string(salesObj):
+    salesLine = "{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}".format(salesObj.salesID,
+                                                          salesObj.salesLineID,
+                                                          salesObj.saleDate,
+                                                          salesObj.personelID,
+                                                          salesObj.Name,
+                                                          salesObj.productID,
+                                                          salesObj.retailPrice,
+                                                          salesObj.amount,
+                                                          salesObj.typeOfCollection,
+                                                          salesObj.locationID,
+                                                          salesObj.dara,
+                                                          salesObj.productBarcodeID,
+                                                          salesObj.wholeSalePrice)
+    return salesLine
+
+def convert_sales_string_sales_obj(sales_line):
+    sales = sales_line.split("#")
+    sales_obj = Sales()
+    sales_obj.salesID=sales[0]
+    sales_obj.salesLineID = sales[1]
+    sales_obj.saleDate = sales[2]
+    sales_obj.personelID=sales[3]
+    sales_obj.Name = sales[4]
+    sales_obj.producID=sales[5]
+    sales_obj.retailPrice=sales[6]
+    sales_obj.amount=sales[7]
+    sales_obj.typeOfCollection=sales[8]
+    sales_obj.locationID=sales[9]
+    sales_obj.dara=sales[10]
+    sales_obj.productBarcodeID=sales[11]
+    sales_obj.wholeSalePrice= sales[12]
+    return sales_obj
+
+def local_save_for_sale(sales, locationID, base_weight):
+    global glb_path
+    list_of_files = []
+
+    for file in os.listdir(glb_path):
+        if fnmatch.fnmatch(file, 'sales_*'):
+            list_of_files.append(file)
+    current_date = datetime.datetime.now()
+    fname = "sales_"+ current_date.strftime('%Y-%m-%d')
+    for file in list_of_files:
+        if fname != file:
+           os.remove(glb_path+file)
+    fname=glb_path+fname
+
+    f_object = open(fname, "a+")
+    i=1
+    for salesObj in sales:
+        salesObj.salesLineID = i
+        i = i + 1
+        salesLine=convert_sales_obj_to_sales_string(salesObj)+'\n'
+        f_object.write(salesLine)
+    f_object.close()
+
+def get_list_of_saved_sales(customer_list):
+    f_object = open("sales_log.txt", "r")
+    found_sales_id=0
+    for x in f_object:
+        str_sales_line=x
+        salesID = str_sales_line[0:(str_sales_line.find("#", 1))]
+        if salesID != found_sales_id:
+            customer_obj = Customer()
+            customer_obj.Name = salesID
+            customer_list.append(customer_obj)
+            found_sales_id=salesID
+    f_object.close()
+
 class Product(object):
-    def __init__(self, productID=None, Name=None, price=None, teraziID=None, productBarcodeID=None):
-        self.productID = productID
+    def __init__(self, Name=None, price=None, teraziID=None, productBarcodeID=None, wholesaleprice=None):
         self.Name = Name
         self.price = price
         self.teraziID = teraziID
         self.productBarcodeID=productBarcodeID
-
+        self.wholesaleprice = wholesaleprice
 
 class Customer(object):
     def __init__(self, customer_no=None):
         self.Name = customer_no
-
 
 class Reyon(object):
     def __init__(self, teraziID=None, ReyonName=None):
         self.teraziID = teraziID
         self.ReyonName = ReyonName
 
-
 class Employee(object):
     def __init__(self, personelID=None, Name=None):
         self.personelID = personelID
         self.Name = Name
 
-
-class SalesCounter(object):
-    def __init__(self, salesDate=None, counter=None):
-        self.salesDate = salesDate
-        self.counter = 0
-
-    def get_counter(self):
-        global glb_host
-        global glb_database
-        global glb_user
-        global glb_password
-        global glb_SelectCounter
-        global glb_UpdateCounter
-        global glb_InsertCounter
-        global glb_locationid
-
-        try:
-            conn = pymysql.connect(host=glb_host,
-                                           database=glb_database,
-                                           user=glb_user,
-                                           password=glb_password)  # pyodbc.connect(glb_connection_str)
-            if conn.open:
-                myCursor = conn.cursor()
-                my_date = datetime.now()
-                myCursor.execute(glb_SelectCounter, (my_date.strftime('%Y-%m-%d'), glb_locationid,))
-                rows = myCursor.fetchall()
-                number_of_rows = 0
-                for row in rows:
-                    number_of_rows = number_of_rows + 1
-                    self.counter = row[0] + 1
-                if number_of_rows > 0:
-                    myCursor.execute(glb_UpdateCounter, (self.counter, my_date.strftime('%Y-%m-%d'), glb_locationid,))
-                else:
-                    self.counter = 1
-                    myCursor.execute(glb_InsertCounter, (my_date.strftime('%Y-%m-%d'), self.counter, glb_locationid,))
-                conn.commit()
-                myCursor.close()
-                conn.close()
-            else:
-                add_to_log("get_Counter", "Bağlantı Hatası")
-        except pymysql.Error as e:
-            add_to_log("get_Counter", "DBError :" + e.args[1])
-        return self.counter
-
-
 class Sales(object):
-    def __init__(self, salesID=None, salesLineID=None, personelID=None, productID=None, Name=None,
-                 retailPrice=None, amount=None, typeOfCollection=None, productBarcodeID=None):
+    def __init__(self, salesID=None, salesLineID=None, personelID=None, Name=None,
+                 retailPrice=None, amount=None, typeOfCollection=None, productBarcodeID=None, productID=None, wholeSalePrice=None):
         global glb_base_weight
         global glb_locationid
 
-        my_date = datetime.now()
+        my_date = datetime.datetime.now()
         self.saleDate = my_date.strftime('%Y-%m-%d')
         self.salesID = salesID
         self.salesLineID = salesLineID
         self.personelID = personelID
-        self.productID = productID
         self.Name = Name
+        self.productID=productID
         self.retailPrice = retailPrice
         self.amount = amount
         self.typeOfCollection = typeOfCollection
         # -1 active customer still being served;
         # -2 customer sales canceled;
+        # -3 merged customer
         # 0 send to cashier waiting for payment;
         # 1 paid in cash;
         # 2 paid by credit card;
@@ -199,387 +194,554 @@ class Sales(object):
         self.locationID = glb_locationid
         self.dara = glb_base_weight
         self.productBarcodeID=productBarcodeID
+        self.wholeSalePrice = wholeSalePrice
 
+class SalesCounter(object):
+    def __init__(self, salesDate=None, counter=None):
+        self.salesDate = salesDate
+        self.counter = 0
 
-def sales_update(srcTypeOfCollection, destTypeOfCollection):
-    global glb_host
-    global glb_database
-    global glb_user
-    global glb_password
-    global glb_UpdateSales
-    global glb_base_weight
-    global glb_locationid
+    def get_counter(self,wndHandle):
+        global glb_SelectCounter
+        global glb_UpdateCounter
+        global glb_InsertCounter
+        global glb_locationid
+        counter = 0
+        error = ""
+        returnvalue = False
 
-    try:
-        conn = pymysql.connect(host=glb_host,
-                                       database=glb_database,
-                                       user=glb_user,
-                                       password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.open:
-            myCursor = conn.cursor()
-            for salesObj in glb_sales:
-                my_date = datetime.now()
-                saleTime = my_date.strftime('%Y-%m-%d %H:%M:%S.%f')
-                myCursor.execute(glb_UpdateSales, (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.productID, salesObj.amount, destTypeOfCollection, saleTime, glb_locationid, glb_base_weight,salesObj.productBarcodeID, salesObj.salesID, salesObj.salesLineID, srcTypeOfCollection, salesObj.saleDate, glb_locationid,))
-            conn.commit()
-            myCursor.close()
-            conn.close()
-        else:
-            add_to_log("sales_Update", "Bağlantı Hatası")
-    except pymysql.Error as e:
-        add_to_log("sales_update", "DbError :"+e.args[1])
+        if db_interface.interface_up:
+            my_date = datetime.datetime.now()
 
-def add_prepared_package(self):
-#    /* Get barcode ID for prepared package */
-        try:
-            conn = pymysql.connect(host=glb_host,
-                                       database=glb_database,
-                                       user=glb_user,
-                                       password=glb_password)  # pyodbc.connect(glb_connection_str)
-
-        except pymysql.Error as e:
-            add_to_log("add_prepared_package", "DBHatası :" + e.args[1])
-#   /* add products to prepered packaged table */
-        if conn.open:
-            try:
-                myCursor = conn.cursor()
-                myCursor.execute(glb_getBarcodeID,())
-                row = myCursor.fetchone()
-                if row != NONE:
-                    barcodeID=row[0]
-                    myCursor.execute(glb_update_barcode_as_used,(barcodeID,))
-                    conn.commit()
-                    lineNo=1
-                    for salesObj in glb_sales:
-                        myCursor.execute(glb_insert_packedprod_items,(
-                            barcodeID, lineNo, salesObj.amount, salesObj.productID,"0",datetime.now(),))
-                        lineNo=lineNo+1
-                    conn.commit()
-                    myCursor.close()
-                    conn.close()
-                    print_receipt(barcodeID)
-                    glb_sales.clear()
-                    self.update_products_sold()
-                    if glb_customer_window == 1:
-                        self.update_products_sold_for_customer()
-                    self.btn_cleardara_clicked()
-                    self.new_customer_clicked()
-                else:
-                    add_to_log("add_prepared_package", "Paketli ürün için barkod kalmadı.")
-            except pymysql.Error as e:
-                add_to_log("add_prepared_package", "DBHatası :" + e.args[1])
-
-def print_receipt(barcod_to_be_printed):
-#    dev = usb.core.find(idVendor=0x0416, idProduct=0x5011)
-    p = Usb(0x0416, 0x5011, 0, 0x81, 0x03)
-    p.cut()
-#    p.charcode("Turkish")
-    p._raw(b'\x1B\x07\x5B')
-    p.codepage='cp857'
-    p.text("\n")
-    p._raw(b'\x1b\x61\x01')  # center printing
-    today = datetime.now()
-    p.text(today.strftime('%Y-%m-%d %H:%M:%S.%f') + '\n')
-    p._raw(b'\x1b\x44\x01\x12\x19\x00\n') # set tab stops for output
-    toplam=0
-    for salesObj in glb_sales:
-        strAmount = "{:6.3f}".format(salesObj.amount)
-        strAmount = strAmount.rjust(6)
-        tutar=salesObj.amount*salesObj.retailPrice
-        toplam=toplam+tutar
-        strTutar = "{:7.2f}".format(tutar)
-        strTutar = strTutar.rjust(7)
-        p.text("\x09 "+salesObj.Name[0:15]+"\x09"+strAmount+"\x09"+strTutar+"\n")
-    strToplam="{:7.2f}".format(toplam)
-    strToplam=strToplam.rjust(7)
-    p.text("\x09\x09\x09" + " ______\n")
-    p.text("\x09"+" Toplam"+"\x09\x09"+strToplam)
-    p.text("\n")
-    with open('temp.jpeg', 'wb') as f:
-        EAN13(barcod_to_be_printed, writer=ImageWriter()).write(f)
-    to_be_resized=Image.open("temp.jpeg")
-    newSize=(300,70)
-    resized=to_be_resized.resize(newSize,resample=PIL.Image.NEAREST)
-    p.image(resized, impl='bitImageColumn')
-    p.text("\n"+barcod_to_be_printed)
-    p.cut()
-    p.close()
-
-
-
-def sales_hard_delete( salesID):
-    global glb_salesDelete
-    global glb_locationid
-
-    try:
-        conn = pymysql.connect(host=glb_host,
-                                       database=glb_database,
-                                       user=glb_user,
-                                       password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.open:
-            myCursor = conn.cursor()
-            my_date = datetime.now()
-            saleDate = my_date.strftime('%Y-%m-%d')
-            myCursor.execute(glb_salesDelete,(saleDate,salesID,glb_locationid,))
-            conn.commit()
-            myCursor.close()
-            conn.close()
-        else:
-            add_to_log("sales_hard_delete","Bağlantı Hatası")
-    except pymysql.Error as e:
-        add_to_log("sales_hard_delete","DBHatası :"+e.args[1])
-
-
-def sales_save(typeOfCollection):
-    global glb_host
-    global glb_database
-    global glb_user
-    global glb_password
-    global glb_SelectSalesLineExists
-    global glb_UpdateSalesLine
-    global glb_InsertSalesLine
-    global glb_locationid
-    global glb_base_weight
-
-    try:
-        conn = pymysql.connect(host=glb_host,
-                                       database=glb_database,
-                                       user=glb_user,
-                                       password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.open:
-            myCursor = conn.cursor()
-            for salesObj in glb_sales:
-                myCursor.execute(glb_SelectSalesLineExists,
-                                 (salesObj.salesID,salesObj.salesLineID, salesObj.saleDate,glb_locationid))
-                rows = myCursor.fetchall()
-                if rows[0][0] > 0:
-                    myCursor.execute(glb_UpdateSalesLine,
-                                     (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,
-                                     salesObj.productID,salesObj.amount, typeOfCollection,glb_locationid,glb_base_weight,salesObj.productBarcodeID, salesObj.personelID,
-                                     salesObj.salesID,salesObj.salesLineID,salesObj.saleDate,glb_locationid))
-                else:
-                    paidAmount=0.0
-                    myCursor.execute(glb_InsertSalesLine,
-                                     (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID,
-                                      salesObj.personelID, salesObj.productID,salesObj.amount,paidAmount,typeOfCollection,glb_locationid,glb_base_weight,salesObj.productBarcodeID))
-            conn.commit()
-            myCursor.close()
-            conn.close()
-        else:
-            add_to_log("sales_save","Bağlantı Hatası")
-    except pymysql.Error as e:
-        add_to_log("sales_save","DBHatası :"+e.args[1])
-
-
-def sales_load(salesID, typeOfCollection):
-    global glb_customer_no
-    global glb_sales_line_id
-    global glb_customer_no
-    global glb_host
-    global glb_database
-    global glb_user
-    global glb_password
-    global glb_SelectSales
-    global glb_locationid
-    global glb_base_weight
-
-    try:
-        conn = pymysql.connect(host=glb_host,
-                                       database=glb_database,
-                                       user=glb_user,
-                                       password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.open:
-            myCursor = conn.cursor()
-            myCursor.execute(glb_SelectSales,
-                             (salesID,typeOfCollection,glb_locationid))
-            rows = myCursor.fetchall()
-            glb_sales_line_id = 1
-            for row in rows:
-                glb_customer_no = row[1]
-                salesObj = Sales()
-                salesObj.saleDate = row[0]
-                salesObj.salesID = row[1]
-                salesObj.salesLineID = row[2]
-                salesObj.personelID = row[3]
-                salesObj.productID = row[4]
-                salesObj.amount = row[5]
-                salesObj.retailPrice = row[6]
-                salesObj.Name = row[7]
-                salesObj.typeOfCollection = row[8]
-                salesObj.dara=row[9]
-                salesObj.productBarcodeID=[10]
-                glb_base_weight = salesObj.dara
-                glb_sales.append(salesObj)
-                glb_sales_line_id = glb_sales_line_id + 1
-            myCursor.close()
-            conn.close()
-        else:
-            add_to_log("sales_load","Bağlantı Hatası")
-    except pymysql.Error as e:
-        add_to_log("sales_load","DBHatası :"+e.args[1])
-
-
-def get_product_based_on_barcod(prdct_barcode, salesObj):
-    global glb_cursor
-    global glb_sales_line_id
-    global glb_customer_no
-    global glb_employees_selected
-    global glb_host
-    global glb_database
-    global glb_user
-    global glb_password
-    global glb_SelectProductByBarcode
-
-    retval=1
-    try:
-        conn = pymysql.connect(host=glb_host,
-                                       database=glb_database,
-                                       user=glb_user,
-                                       password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.open:
-            myCursor = conn.cursor()
-            myCursor.execute(glb_SelectProductByBarcode,
-                             (prdct_barcode,))
-            rows = myCursor.fetchall()
-            if len(rows) > 0:
+            error, rows = db_interface.db_core.execsql(db_interface.glb_SelectCounter, (my_date.strftime('%Y-%m-%d'), glb_locationid,))
+            if error == "":
+                number_of_rows = 0
                 for row in rows:
+                    number_of_rows = number_of_rows + 1
+                    counter = row[0] + 1
+                if number_of_rows > 0:
+                    error = db_interface.db_core.execnonesql(db_interface.glb_UpdateCounter, (counter, my_date.strftime('%Y-%m-%d'), glb_locationid,))
+                else:
+                    counter = 1
+                    error = db_interface.db_core.execnonesql(db_interface.glb_InsertCounter, (my_date.strftime('%Y-%m-%d'), counter, glb_locationid,))
+                if error == "":
+                    error = db_interface.db_core.commit()
+                    if error == "":
+                        returnvalue=True
+                    else:
+                        db_interface.sql_error(wndHandle, error)
+                else:
+                    db_interface.sql_error(wndHandle, error)
+            else:
+                db_interface.sql_error(wndHandle, error)
+        else:
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
+            counter = -1
+        return returnvalue, counter
+
+class dbCore(object):
+    glb_host = "192.168.1.45"
+    glb_database = "order_and_sales"
+    glb_user = "hakan"
+    glb_password = "QAZwsx135"
+    conn=None
+    cursor=None
+
+    def init(self):
+        pass
+
+    def connect(self):
+        error = ""
+        try:
+            dbCore.conn = pymysql.connect(host=dbCore.glb_host,
+                                   database=dbCore.glb_database,
+                                   user=dbCore.glb_user,
+                                   password=dbCore.glb_password)  # pyodbc.connect(glb_connection_str)
+        except Exception:
+            error = traceback.format_exc()
+        if dbCore.conn is None:
+            error = "SQL bağlantısı oluşturulamadı."
+        else:
+            dbCore.cursor = dbCore.conn.cursor()
+        return error
+
+    def execsql(self,sql_command,sql_params):
+        error= ""
+        rows = None
+        try:
+            dbCore.commit(self)
+            dbCore.cursor.execute(sql_command, sql_params)
+            rows = dbCore.cursor.fetchall()
+        except Exception as e:
+            error=""
+            for arg in e.args:
+                if isinstance(arg, int):
+                    error = error+" "+str(arg)
+                else:
+                    error = error+" "+arg
+        return error,rows
+
+    def execnonesql(self,sql_command,sql_params):
+        error = ""
+        try:
+            dbCore.cursor.execute(sql_command, sql_params)
+        except Exception as e:
+            error=""
+            for arg in e.args:
+                if isinstance(arg, int):
+                    error = error+" "+str(arg)
+                else:
+                    error = error+" "+arg
+        return error
+
+    def commit(self):
+        error = ""
+        try:
+            dbCore.conn.commit()
+        except Exception as e:
+            error = e.args[0]
+        return error
+
+    def disconnect(self):
+        dbCore.cursor.close()
+        dbCore.conn.close()
+
+class db_interface(object):
+    # queries
+    glb_getversion = "select versionstr from versiontable"
+    glb_GetTeraziProducts = "Select  TeraziID, productName, productRetailPrice,barcodeID, productWholesalePrice from teraziscreenmapping left outer join " \
+                            "products on (teraziscreenmapping.barcodeID=products.productBarcodeID) where TeraziID=%s order by screenSeqNo;"
+    glb_SelectTerazi = "Select  TeraziID, teraziName from terazitable;"
+    glb_SelectEmployees = "Select personelID, persName,persSurname  from  employeesmodels where userActive=0;"
+    glb_SelectCounter = "select counter from salescounter where salesDate=%s and locationID=%s for update;"
+    glb_UpdateCounter = "Update salescounter set counter=%s where salesDate=%s and locationID=%s;"
+    glb_InsertCounter = "insert into salescounter (salesDate, counter,locationID) values (%s,%s,%s);"
+    glb_UpdateSales = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, amount=%s, dueAmount=%s,typeOfCollection=%s, saleTime=%s, locationID=%s,dara=%s,productBarcodeID=%s,wholesaleamount=%s where salesID=%s and salesLineID=%s and typeOfCollection=%s and saleDate=%s and locationID=%s;"
+    glb_SelectSalesLineExists = "select count(*) from salesmodels where salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
+    glb_UpdateSalesLine = "update salesmodels set saleDate=%s, salesID=%s,  salesLineID=%s, personelID=%s, amount=%s, dueAmount=%s, typeOfCollection=%s,locationID=%s,dara=%s,productBarcodeID=%s, wholesaleamount=%s where personelID=%s and salesID=%s and salesLineID=%s and saleDate=%s and locationID=%s;"
+    glb_InsertSalesLine = "insert into salesmodels (saleDate, salesID,salesLineID,personelID,amount,dueAmount,paidAmount,typeOfCollection,locationID,dara,productBarcodeID,saleTime,wholesaleamount) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);"
+    glb_SelectSales = "select  saleDate, salesID,  salesLineID, personelID, amount, productRetailPrice, productName, typeOfCollection,dara, salesmodels.productBarcodeID, productWholeSalePrice from salesmodels left outer join products on (salesmodels.productBarcodeID= products.productBarcodeID) where saleDate=%s and salesId=%s and typeOfCollection=%s and locationID=%s;"
+    glb_SelectProductByBarcode = "select productName, productRetailPrice, productWholeSalePrice from products where productBarcodeID=%s;"
+    glb_SelectCustomers = "Select distinct salesID from salesmodels where  typeOfCollection = -1 and saleDate=%s and locationID=%s order by salesID;"
+    glb_SelectCustomersOnCashier = "Select  distinct salesID from salesmodels where  saleDate=%s and typeOfCollection = 0 and locationID=%s order by salesID;"
+    glb_salesDelete = "delete from salesmodels where saleDate=%s and salesID=%s and locationID=%s;"
+    glb_getBarcodeID = "SELECT barcodeID FROM packagedproductsbarcodes where recstatus=0 LIMIT 1;"
+    glb_update_barcode_as_used = "update packagedproductsbarcodes set recStatus=1 where barcodeID=%s;"
+    glb_insert_packedprod_items = "insert into packagedproductdetailsmodel (PackedProductID, PackagedProductLineNo, Amount, recStatus,recDate,customerID,productBarcodeID) values(%s,%s,%s,%s,%s,%s,%s);"
+    glb_get_packed_details = "SELECT packagedproductdetailsmodel.productBarcodeID, amount, productName, productRetailPrice, productWholeSalePrice FROM packagedproductdetailsmodel left outer join  products on(packagedproductdetailsmodel.productBarcodeID=products.productBarcodeID) where packagedproductdetailsmodel.recStatus=0 and PackedProductID=%s;"
+    glb_Update_Sales_As_Merged = "update salesmodels set typeOfCollection=%s where saleDate=%s and salesID=%s and locationID=%s"
+    glb_package_exists = "SELECT count(PackedProductID), PackedProductID FROM packagedproductdetailsmodel where customerID = %s and DATE_FORMAT(recDate,'%%Y-%%m-%%d') = %s group by PackedProductID"
+    """Connection data"""
+
+    interface_up = False
+    db_core = None
+
+    def init(self):
+        db_interface.db_core = dbCore()
+        error = db_interface.db_core.connect()
+        if error == "":
+            db_interface.interface_up=True
+        else:
+            db_interface.interface_up=False
+
+    def sql_error(self, wndHandle, errorMessage):
+        db_interface.db_core.disconnect()
+        db_interface.interface_up=False
+        wndHandle.message_box_text.delete("1.0",END)
+        wndHandle.message_box_text.insert(END,errorMessage)
+        db_interface.init()
+
+    def get_version(self):
+        error = ""
+        returnvalue = ""
+        if (db_interface.interface_up):
+            error,raws = db_interface.db_core.execsql(db_interface.glb_getversion, ())
+            if error == "":
+                returnvalue=raws[0][0]
+        return returnvalue
+
+    def sales_update(self, wndHandle, srcTypeOfCollection, destTypeOfCollection,saleList,locationid,base_weight):
+        global glb_UpdateSales
+        global glb_base_weight
+        global glb_locationid
+        returnvalue=False
+        error=""
+
+        if (db_interface.interface_up):
+            for salesObj in saleList:
+                my_date = datetime.datetime.now()
+                saleTime = my_date.strftime('%Y-%m-%d %H:%M:%S.%f')
+                error = db_interface.db_core.execnonesql(db_interface.glb_UpdateSales,(salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID, salesObj.amount, float(salesObj.retailPrice) * salesObj.amount, destTypeOfCollection, saleTime, locationid, base_weight,salesObj.productBarcodeID,float(salesObj.wholeSalePrice) * salesObj.amount, salesObj.salesID, salesObj.salesLineID, srcTypeOfCollection, salesObj.saleDate, locationid,))
+                if error != "":
+                    break
+            if error == "":
+                error = db_interface.db_core.commit()
+                if error == "":
+                    returnvalue = True
+                else:
+                    db_interface.sql_error( wndHandle, error)
+            else:
+                db_interface.sql_error( wndHandle, error)
+        else:
+            db_interface.sql_error( wndHandle, "Veri tabanı bağlantı hatası")
+        return returnvalue
+
+    def add_prepared_package(self, wndHandle, salesList):
+        error = ""
+        rows = ()
+        returnvalue = ""
+#    /* Get barcode ID for prepared package */
+#   /* add products to prepered packaged table */
+        if db_interface.interface_up:
+            my_date = datetime.datetime.now()
+            error, rows = db_interface.db_core.execsql(db_interface.glb_package_exists,(salesList[0].salesID, my_date.strftime('%Y-%m-%d')))
+            if error == "":
+                if len(rows)==0:
+                    error, rows = db_interface.db_core.execsql(db_interface.glb_getBarcodeID,())
+                    if error == "":
+                        if rows is not None:
+                            barcodeID = rows[0][0]
+                            error = db_interface.db_core.execnonesql(db_interface.glb_update_barcode_as_used,(barcodeID,))
+                            if error == "":
+                                lineNo = 1
+                                for salesObj in salesList:
+                                    error = db_interface.db_core.execnonesql(db_interface.glb_insert_packedprod_items, (barcodeID, lineNo, salesObj.amount,"0",datetime.datetime.now(),salesObj.salesID,salesObj.productBarcodeID))
+                                    lineNo = lineNo + 1
+                                    if error != "":
+                                        break
+                                if error == "":
+                                    error = db_interface.db_core.commit()
+                                if error == "":
+                                    returnvalue=barcodeID
+                                else:
+                                    db_interface.sql_error( wndHandle, error)
+                            else:
+                                db_interface.sql_error( wndHandle, error)
+                        else:
+                            db_interface.sql_error( wndHandle, "Paketli ürün için barkod kalmadı.")
+                            add_to_log("add_prepared_package", "Paketli ürün için barkod kalmadı.")
+                    else:
+                        db_interface.sql_error( wndHandle, "Paketli ürün için barkod kalmadı veya Sql Hatası = "+ error)
+                else:
+                    returnvalue= rows[0][1]
+        else:
+          db_interface.sql_error( wndHandle, error)
+        return returnvalue
+
+    def sales_hard_delete(self, wndHandle, salesID):
+        returnvalue = False
+        error = ""
+
+        if db_interface.interface_up:
+            my_date = datetime.datetime.now()
+            saleDate = my_date.strftime('%Y-%m-%d')
+            error = db_interface.db_core.execnonesql(db_interface.glb_salesDelete,(saleDate,salesID,glb_locationid,))
+            if error == "":
+                error = db_interface.db_core.commit()
+                if error == "":
+                    returnvalue = True
+                else:
+                    db_interface.sql_error( wndHandle, error)
+        else:
+            db_interface.sql_error( wndHandle, "Veri tabanı erişim hatası. Fonksiyon : sales_hard_delete")
+        return returnvalue
+
+    def sales_save(self, wndHandle,typeOfCollection, saleList,locationid,base_weight):
+        returnvalue = False
+        error = ""
+        rows = ()
+
+        if db_interface.interface_up:
+            i=1
+            # renumber sales line id's: if sequence numbers are scaterred this part corrects it
+            for salesObj in saleList:
+                salesObj.salesLineID = i
+                i=i+1
+
+            for salesObj in saleList:
+                error, rows = db_interface.db_core.execsql(db_interface.glb_SelectSalesLineExists,(salesObj.salesID,salesObj.salesLineID, salesObj.saleDate,locationid))
+                if error == "":
+                    if rows[0][0] > 0:
+                        error = db_interface.db_core.execnonesql(db_interface.glb_UpdateSalesLine,
+                                (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID, salesObj.personelID,
+                                salesObj.amount, float(salesObj.retailPrice) * salesObj.amount,glb_locationid,base_weight,salesObj.productBarcodeID,float(salesObj.wholeSalePrice)*salesObj.amount, salesObj.personelID,
+                                salesObj.salesID,salesObj.salesLineID,salesObj.saleDate,locationid))
+                    else:
+                        paidAmount=0.0
+                        error = db_interface.db_core.execnonesql(db_interface.glb_InsertSalesLine,
+                                                                 (salesObj.saleDate, salesObj.salesID, salesObj.salesLineID,
+                                                                  salesObj.personelID, salesObj.amount,float(salesObj.retailPrice) * salesObj.amount, paidAmount,
+                                                                  typeOfCollection,locationid,base_weight,salesObj.productBarcodeID,datetime.datetime.now(),float(salesObj.wholeSalePrice)*salesObj.amount))
+                    if error != "":
+                        break
+                else:
+                    break
+            if error == "":
+                error = db_interface.db_core.commit()
+                if error == "":
+                    returnvalue=True
+                else:
+                    db_interface.sql_error( wndHandle, error)
+            else:
+                db_interface.sql_error(wndHandle, error)
+        else:
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
+        return returnvalue
+
+    def sales_load(self, wndHandle, salesID, typeOfCollection,salesList, sales_line_id,locationid,base_weight):
+        returnvalue=False
+        error = ""
+        rows = None
+
+        if db_interface.interface_up:
+            error,rows = db_interface.db_core.execsql(db_interface.glb_SelectSales,(datetime.datetime.now().strftime('%Y-%m-%d'), salesID,typeOfCollection,locationid))
+            if error == "":
+                returnvalue=True
+                salesList.clear()
+                sales_line_id = 1
+                for row in rows:
+                    salesID = row[1]
+                    salesObj = Sales()
+                    salesObj.saleDate = row[0]
+                    salesObj.salesID = row[1]
+                    salesObj.salesLineID = row[2]
+                    salesObj.personelID = row[3]
+                    salesObj.amount = row[4]
+                    salesObj.retailPrice = row[5]
+                    salesObj.Name = row[6]
+                    salesObj.typeOfCollection = row[7]
+                    salesObj.dara=row[8]
+                    salesObj.productBarcodeID=row[9]
+                    salesObj.wholeSalePrice = row[10]
+                    base_weight = salesObj.dara
+                    salesList.append(salesObj)
+                    sales_line_id = sales_line_id + 1
+            else:
+                db_interface.sql_error(wndHandle, error)
+        else:
+            db_interface.sql_error( wndHandle, "Veri Tabanı bağlantı hatası")
+        return returnvalue, salesList, sales_line_id, base_weight
+
+    def sales_merge(self,wndHandle, merge_customer_no, typeOfCollection,glb_sales):
+        global glb_customer_no
+        global glb_sales_line_id
+        global glb_locationid
+        returnvalue=False
+        error = ""
+
+        rows = ()
+
+
+        if db_interface.interface_up:
+            error, rows = db_interface.db_core.execsql(db_interface.glb_SelectSales,
+                                        (datetime.datetime.now().strftime('%Y-%m-%d'), merge_customer_no, typeOfCollection, glb_locationid))
+            if error == "":
+                for row in rows:
+                    salesObj = Sales()
+                    salesObj.saleDate = row[0]
                     salesObj.salesID = glb_customer_no
                     salesObj.salesLineID = glb_sales_line_id
+                    salesObj.personelID = row[3]
+                    salesObj.amount = row[4]
+                    salesObj.retailPrice = row[5]
+                    salesObj.Name = row[6]
+                    salesObj.typeOfCollection = row[7]
+                    salesObj.productBarcodeID = row[9]
+                    salesObj.wholeSalePrice = row[10]
+                    glb_sales.append(salesObj)
                     glb_sales_line_id = glb_sales_line_id + 1
-                    salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
-                    salesObj.productID = row[0]
-                    salesObj.amount = 1
-                    salesObj.Name = row[1]
-                    salesObj.retailPrice = row[2]
-                    salesObj.typeOfCollection = 0
-                    salesObj.productBarcodeID=prdct_barcode
+                error = db_interface.db_core.execnonesql(db_interface.glb_Update_Sales_As_Merged,
+                             (-3, salesObj.saleDate, merge_customer_no, glb_locationid))
+                if error == "":
+                    error = db_interface.db_core.commit()
+                    if error == "":
+                        returnvalue = True
+                    else:
+                        db_interface.sql_error( wndHandle, error)
+                else:
+                    db_interface.sql_error( wndHandle, error)
             else:
-                add_to_log("get_product_based_on_barcod",prdct_barcode + " kayıt Buulunamadı")
-                retval = 0
-            myCursor.close()
-            conn.close()
+                db_interface.sql_error( wndHandle, error)
         else:
-            add_to_log("get_product_based_on_barcod","Bağlantı Hatası")
-            retval = 0
-    except pymysql.Error as e:
-        add_to_log("get_product_based_on_barcod","DB Hatası :"+e.args[1])
-        retval = 0
-    return retval
+            db_interface.sql_error( wndHandle, "Veri Tabanı bağlantı hatası")
+        return returnvalue
 
-def get_served_customers():
-    global glb_active_served_customers
-    global glb_host
-    global glb_database
-    global glb_user
-    global glb_password
-    global glb_SelectCustomers
-    global glb_locationid
+    def get_product_based_on_barcod(self,wndHandle, prdct_barcode, salesObj):
+        global glb_cursor
+        global glb_sales_line_id
+        global glb_customer_no
+        global glb_employees_selected
+        returnvalue = False
+        error = ""
+        rows = ()
+        if glb_employees_selected != '':
+            if db_interface.interface_up:
+                error, rows = db_interface.db_core.execsql(db_interface.glb_SelectProductByBarcode,(prdct_barcode,))
+                if error == "":
+                    if len(rows) > 0:
+                        returnvalue = True
+                        for row in rows:
+                            salesObj.salesID = glb_customer_no
+                            salesObj.salesLineID = glb_sales_line_id
+                            glb_sales_line_id = glb_sales_line_id + 1
+                            salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
+                            salesObj.amount = 1
+                            salesObj.Name = row[0]
+                            salesObj.retailPrice = row[1]
+                            salesObj.wholeSalePrice = row[2]
+                            salesObj.typeOfCollection = 0
+                            salesObj.productBarcodeID=prdct_barcode
+                    else:
+                        db_interface.sql_error(wndHandle, prdct_barcode + " numaralı kayıt bulunamadı.")
+                else:
+                    db_interface.sql_error(wndHandle, error)
+        else:
+            self.message_box_text.insert(END, "Çalışan seçilmeden işleme devam edilemez")
+        return returnvalue
 
-    try:
-        glb_active_served_customers.clear()
-        conn = pymysql.connect(host=glb_host,
-                                       database=glb_database,
-                                       user=glb_user,
-                                       password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.open:
+    def get_served_customers(self, wndHandle, activecustomers):
+        global glb_locationid
+        returnvalue=False
+        error = ""
+        rows= ()
 
-            myCursor = conn.cursor()
-            my_date = datetime.now()
+        if db_interface.interface_up:
+            my_date = datetime.datetime.now()
             saleDate = my_date.strftime('%Y-%m-%d')
-            myCursor.execute(glb_SelectCustomers, (saleDate, glb_locationid,))
-            rows = myCursor.fetchall()
-            for row in rows:
-                customer_obj = Customer()
-                customer_obj.Name = row[0]
-                glb_active_served_customers.append(customer_obj)
-            myCursor.close()
-            conn.close()
+            error, rows = db_interface.db_core.execsql(db_interface.glb_SelectCustomers, (saleDate, glb_locationid))
+            if error == "":
+                returnvalue=True
+                activecustomers.clear()
+                for row in rows:
+                    customer_obj = Customer()
+                    customer_obj.Name = row[0]
+                    activecustomers.append(customer_obj)
+            else:
+                db_interface.sql_error(wndHandle, error)
         else:
-            add_to_log("get_served_Customers","Bağlantı Hatası")
-    except pymysql.Error as e:
-        add_to_log("get_served_Customers","DB Hatası :"+e.args[1])
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
+        return returnvalue
 
+    def get_customers_on_cashier(self,wndHandle,customerList,locationid):
+        returnvalue=False
+        error = ""
+        rows = ()
 
-def get_customers_on_cashier():
-    global glb_customers_on_cashier
-    global glb_host
-    global glb_database
-    global glb_user
-    global glb_password
-    global glb_locationid
-
-    try:
-        glb_customers_on_cashier.clear()
-        conn = pymysql.connect(host=glb_host,
-                                       database=glb_database,
-                                       user=glb_user,
-                                       password=glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.open:
-            myCursor = conn.cursor()
-            my_date = datetime.now()
+        if db_interface.interface_up:
+            my_date = datetime.datetime.now()
             saleDate = my_date.strftime('%Y-%m-%d')
-            myCursor.execute(glb_SelectCustomersOnCashier, (saleDate, glb_locationid,))
-            rows = myCursor.fetchall()
-            for row in rows:
-                customer_obj = Customer()
-                customer_obj.Name = row[0]
-                glb_customers_on_cashier.append(customer_obj)
-            myCursor.close()
-            conn.close()
+            error, rows = db_interface.db_core.execsql(db_interface.glb_SelectCustomersOnCashier, (saleDate, locationid,))
+            if error == "":
+                returnvalue = True
+                customerList.clear()
+                for row in rows:
+                    customer_obj = Customer()
+                    customer_obj.Name = row[0]
+                    customerList.append(customer_obj)
+            else:
+                db_interface.sql_error(wndHandle, error)
         else:
-            add_to_log("get_customers_on_cashier","Bağlantı Hatası")
-    except pymysql.Error as e:
-        add_to_log("get_customers_on_cashier","DB Hatası : "+e.args[1])
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
+        return returnvalue
 
-
-def load_products(ID):
-    global glb_host
-    global glb_database
-    global glb_user
-    global glb_password
-
-    try:
-        conn = pymysql.connect(host = glb_host,
-                                       database = glb_database,
-                                       user = glb_user,
-                                       password = glb_password)  # pyodbc.connect(glb_connection_str)
-        if conn.open:
-            myCursor = conn.cursor()
-            myCursor.execute(glb_GetTeraziProducts, (ID,))
-            rows = myCursor.fetchall()
-            glb_product_names.clear()
-            for row in rows:
-                productObj = Product()
-                productObj.teraziID = row[0]
-                productObj.productID = row[1]
-                productObj.Name = row[2]
-                productObj.price = float(row[3])
-                productObj.productBarcodeID=row[4]
-                glb_product_names.append(productObj)
-            myCursor.close()
-            conn.close()
+    def load_products(self, wndHandle, reyonID, product_names):
+        returnvalue=False
+        error = ""
+        rows = ()
+        if db_interface.interface_up:
+            error, rows = db_interface.db_core.execsql(db_interface.glb_GetTeraziProducts, (reyonID,))
+            if error == "":
+                returnvalue = True
+                product_names.clear()
+                for row in rows:
+                    productObj = Product()
+                    productObj.teraziID = row[0]
+                    productObj.Name = row[1]
+                    productObj.price = float(row[2])
+                    productObj.productBarcodeID=row[3]
+                    productObj.wholeSalePrice = float(row[4])
+                    product_names.append(productObj)
+            else:
+                db_interface.sql_error(wndHandle, error)
         else:
-            add_to_log( "load_products", "Bağlantı hatası")#Connect,on Error
-    except pymysql.Error as e:
-        add_to_log("load_products", "DB Error :"+e.args[1]) #any error log it
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
+        return returnvalue
 
-def wait_for_sql():
-    db_connected = FALSE
-    while not db_connected:
-        try:
-            conn =  pymysql.connect(host=glb_host,
-                                            database='order_and_sales_management',
-                                            user='hakan',
-                                            password='QAZwsx135') # pyodbc.connect(glb_connection_str)
-            if conn.open:
-                db_connected = TRUE
-            conn.close()
-        except pymysql.Error as e:
-            add_to_log("wait_for_sql", e.args[1])
-            messagebox.showinfo("Hata Mesajı", "Sunucu ile bağlantı Kurulamadı "+ e.args[1])
-            db_connected = FALSE
-            time.sleep(2)
+    def wait_for_sql(self):
+        while not db_interface.interface_up:
+            db_interface.init()
+            if db_interface.interface_up == False:
+                messagebox.showinfo("Hata","Sunucu ile bağlantı kurulamadı.")
+                time.sleep(2)
 
+    def load_reyon_data(self,wndHandle, reyonlar):
+        returnvalue = False
+        error = ""
+        rows = ()
+
+        if db_interface.interface_up:
+            error, rows = db_interface.db_core.execsql(db_interface.glb_SelectTerazi,())
+            if error == "":
+                returnvalue=True
+                for row in rows:
+                    reyonObj = Reyon()
+                    reyonObj.teraziID = row[0]
+                    reyonObj.ReyonName = row[1]
+                    reyonlar.append(reyonObj)
+            else:
+                db_interface.sql_error(wndHandle, error)
+        else:
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
+        return returnvalue
+
+    def load_employees(self, wndHandle, employees):
+        returnvalue = False
+        error = ""
+        rows = ()
+
+        if db_interface.interface_up:
+            error, rows = db_interface.db_core.execsql(db_interface.glb_SelectEmployees,())
+            if error == "":
+                returnvalue = True
+                for row in rows:
+                    employeeObj = Employee()
+                    employeeObj.Name = row[1] + " " + row[2]
+                    employeeObj.personelID = row[0]
+                    employees.append(employeeObj)
+            else:
+                db_interface.sql_error( wndHandle, error)
+        else:
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
+        return returnvalue
+
+    def get_packaged_products(self, wndHandle, barcodeID):
+        returnvalue=False
+        error = ""
+        rows = ()
+        salesList = []
+
+        if db_interface.interface_up:
+            error, rows = db_interface.db_core.execsql(db_interface.glb_get_packed_details, (barcodeID,))
+            if error == "":
+                returnvalue = True
+                lineID = 1
+                for row in rows:
+                    salesObj = Sales()
+                    salesObj.salesID = glb_customer_no
+                    salesObj.salesLineID=lineID
+                    salesObj.productBarcodeID = row[0]
+                    salesObj.amount = row[1]
+                    salesObj.Name = row[2]
+                    salesObj.retailPrice = row[3]
+                    salesObj.wholeSalePrice = row[4]
+                    salesObj.typeOfCollection = 0
+                    salesList.append(salesObj)
+                    lineID=lineID+1
+            else:
+                db_interface.sql_error(wndHandle, error)
+        else:
+            db_interface.sql_error(wndHandle, "Veri tabanı bağlantı hatası")
+        return returnvalue, salesList
 
 class load_tables:
 
@@ -589,47 +751,59 @@ class load_tables:
         global glb_base_weight
         global glb_customer_no
         global glb_cursor
-        global glb_host
-        global glb_database
-        global glb_user
-        global glb_password
-        global glb_SelectTerazi
+        global glb_product_names
+        global glb_reyonlar
+        global glb_employees
 
-        wait_for_sql()
-        load_products(1)
-        glb_scaleId = 0
-        glb_sales_line_id = 1
-        glb_base_weight = 0
-        glb_customer_no = 0
-        try:
-            conn = pymysql.connect(host = glb_host,
-                                           database = glb_database,
-                                           user = glb_user,
-                                           password = glb_password)  # pyodbc.connect(glb_connection_str)
-            if conn.open:
-                myCursor = conn.cursor()
-                myCursor.execute(glb_SelectTerazi)
-                rows = myCursor.fetchall()
-                for row in rows:
-                    reyonObj = Reyon()
-                    reyonObj.teraziID = row[0]
-                    reyonObj.ReyonName = row[1]
-                    glb_reyonlar.append(reyonObj)
-                myCursor.close()
-                myCursor=conn.cursor()
-                myCursor.execute(glb_SelectEmployees)
-                rows = myCursor.fetchall()
-                for row in rows:
-                    employeeObj = Employee()
-                    employeeObj.Name = row[1] + " " + row[2]
-                    employeeObj.personelID = row[0]
-                    glb_employees.append(employeeObj)
-                myCursor.close()
-                conn.close()
-            else:
-                add_to_log("load_tables","Bağlantı Hatası")
-        except pymysql.Error as e:
-            add_to_log("load_tables","DB error :"+e.args[1])
+        db_interface.wait_for_sql()
+        if db_interface.load_products(self,1,glb_product_names):
+            glb_scaleId = 0
+            glb_sales_line_id = 1
+            glb_base_weight = 0
+            glb_customer_no = 0
+            if db_interface.load_reyon_data(self, glb_reyonlar):
+                returnvalue = db_interface.load_employees(self, glb_employees)
+
+def print_receipt(barcod_to_be_printed):
+    returnvalue = ""
+#    dev = usb.core.find(idVendor=0x0416, idProduct=0x5011)
+    try:
+        p = Usb(0x0416, 0x5011, 0, 0x81, 0x03)
+        p.cut()
+#    p.charcode("Turkish")
+        p._raw(b'\x1B\x07\x5B')
+        p.codepage='cp857'
+        p.text("\n")
+        p._raw(b'\x1b\x61\x01')  # center printing
+        today = datetime.datetime.now()
+        p.text(today.strftime('%Y-%m-%d %H:%M:%S.%f') + '\n')
+        p._raw(b'\x1b\x44\x01\x12\x19\x00\n') # set tab stops for output
+        toplam=0
+        for salesObj in glb_sales:
+            strAmount = "{:6.3f}".format(salesObj.amount)
+            strAmount = strAmount.rjust(6)
+            tutar=salesObj.amount*float(salesObj.retailPrice)
+            toplam=toplam+tutar
+            strTutar = "{:7.2f}".format(tutar)
+            strTutar = strTutar.rjust(7)
+            p.text("\x09 "+salesObj.Name[0:15]+"\x09"+strAmount+"\x09"+strTutar+"\n")
+        strToplam="{:7.2f}".format(toplam)
+        strToplam=strToplam.rjust(7)
+        p.text("\x09\x09\x09" + " ______\n")
+        p.text("\x09"+" Toplam"+"\x09\x09"+strToplam)
+        p.text("\n")
+        with open('temp.jpeg', 'wb') as f:
+            EAN13(barcod_to_be_printed, writer=ImageWriter()).write(f)
+        to_be_resized=Image.open("temp.jpeg")
+        newSize=(300,70)
+        resized=to_be_resized.resize(newSize,resample=PIL.Image.NEAREST)
+        p.image(resized, impl='bitImageColumn')
+        p.text("\n"+barcod_to_be_printed)
+        p.cut()
+        p.close()
+    except Exception as e:
+        returnvalue = "Printer hatası : "+ traceback.format_exc()
+    return returnvalue
 
 def maininit(gui, *args, **kwargs):
     global w, top_level, root
@@ -645,7 +819,8 @@ def vp_start_gui():
 
 class CustomerWindow(tk.Tk):
         def __init__(self, master):
-            super().__init__()
+            super().__init__(useTk=0)
+
             self.master=master
             tk.Frame.__init__(self.master)
 
@@ -656,7 +831,7 @@ class MainWindow(tk.Tk):
         self.message_box_frame.place(relx=0.0, rely=0.900, relheight=0.10, relwidth=0.994)
         self.message_box_frame.configure(relief='groove', borderwidth="2", background="#d9d9d9")
         self.message_box_frame.configure(highlightbackground="#f0f0f0", width=795)
-        self.message_box_text = tk.Text(self.message_box_frame, height=1, width=80, font=("Arial Bold", 12),
+        self.message_box_text = tk.Text(self.message_box_frame, height=1, width=80, font=("Arial Bold", 18),
                                         bg='dark red', fg="white")
         self.message_box_text.place(relx=0.0, rely=0.0, relheight=0.60, relwidth=0.994)
 
@@ -694,20 +869,21 @@ class MainWindow(tk.Tk):
         global top
         global glb_active_product_frame_content
         glb_active_product_frame_content = 2
-        get_served_customers()
-        varfunc = self.customer_button_clicked
-        self.add_frame_buttons(1, self.product_frame, glb_active_served_customers,glb_active_customers_page_count,varfunc)
+        if db_interface.get_served_customers(self, glb_active_served_customers):
+            varfunc = self.customer_button_clicked
+            self.add_frame_buttons(1, self.product_frame, glb_active_served_customers,glb_active_customers_page_count,varfunc)
 
     def call_back_customer_frame_def(self):
         global glb_customers_on_cashier
+        global glb_locationid
         global top
         global glb_active_product_frame_content
         font11 = "-family {Segoe UI} -size 12 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         glb_active_product_frame_content = 3
-        get_customers_on_cashier()
-        varfunc = self.call_back_customer_no_clicked
-        self.add_frame_buttons(0, self.product_frame,glb_customers_on_cashier,glb_callback_customers_page_count,varfunc)
+        if db_interface.get_customers_on_cashier(self,glb_customers_on_cashier,glb_locationid):
+            varfunc = self.call_back_customer_no_clicked
+            self.add_frame_buttons(0, self.product_frame,glb_customers_on_cashier,glb_callback_customers_page_count,varfunc)
 
     def display_frame_def(self):
         global top
@@ -747,51 +923,49 @@ class MainWindow(tk.Tk):
         global glb_sales
         global glb_customer_no
         global glb_sales_line_id
+        global glb_employees_selected
         global root
+        returnvalue = False
+        salesList = None
         root.config(cursor="watch")
         root.update()
         textdata = self.prdct_barcode.get('1.0', END)
         textdata = textdata.rstrip("\n")
         textdata = textdata.lstrip("\n")
         self.prdct_barcode.delete('1.0', END)
-        product_code=int(textdata[9:13])
-        if product_code >= 9950 and product_code <= 9970:
-            try:
-                conn = pymysql.connect(host=glb_host,
-                                   database=glb_database,
-                                   user=glb_user,
-                                   password=glb_password)  # pyodbc.connect(glb_connection_str)
-                if conn.open:
-                    myCursor = conn.cursor()
-                    myCursor.execute(glb_get_packed_details,(textdata,))
-                    rows = myCursor.fetchall()
-                    for row in rows:
+        if textdata != "" and len(textdata) >= 12:
+            product_code=int(textdata[8:12])
+            if product_code >= 5600 and product_code <=5710:
+                returnvalue, salesList = db_interface.get_packaged_products(self, textdata)
+                if returnvalue:
+                    for salesItem in salesList:
                         salesObj=Sales()
                         salesObj.salesID=glb_customer_no
                         salesObj.salesLineID = glb_sales_line_id
                         glb_sales_line_id = glb_sales_line_id + 1
                         salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
-                        salesObj.productID = row[0]
-                        salesObj.amount = row[1]
-                        salesObj.Name = row[2]
-                        salesObj.retailPrice = row[3]
+                        salesObj.amount = salesItem.amount
+                        salesObj.Name = salesItem.Name
+                        salesObj.retailPrice = salesItem.retailPrice
                         salesObj.typeOfCollection = 0
-                        salesObj.productBarcodeID=textdata
+                        salesObj.productBarcodeID=salesItem.productBarcodeID
+                        salesObj.productID=salesItem.productID
+                        salesObj.wholeSalePrice=salesItem.wholeSalePrice
                         glb_sales.append(salesObj)
-            except pymysql.Error as e:
-                add_to_log("readBarcode","DBerror :"+e.args[1])
-        else:
-            salesObj = Sales()
-            if get_product_based_on_barcod(textdata, salesObj):
-                glb_sales.append(salesObj)
-        self.update_products_sold()
-        if glb_customer_window == 1:
-            self.update_products_sold_for_customer()
+            else:
+                salesObj = Sales()
+                if db_interface.get_product_based_on_barcod(self, textdata, salesObj):
+                    glb_sales.append(salesObj)
+            self.update_products_sold()
+            if glb_customer_window == 1:
+                self.update_products_sold_for_customer()
         root.config(cursor="")
 
 
     def add_frame_buttons(self, active_served_customers, frame, btn_list, page_count, func):
         global glb_screensize
+        global glb_merge_customer_flag
+
         if glb_screensize == 800:
             buttonwidth=19
             buttonheight=2
@@ -801,7 +975,7 @@ class MainWindow(tk.Tk):
         else:
             buttonwidth=24
             buttonheight=2
-            row_size, col_size = 4, 2
+            row_size, col_size = 5, 2
             btn_font = "-family {Segoe UI} -size 16 -weight bold -slant " \
                      "roman -underline 0 -overstrike 0"
 
@@ -827,15 +1001,17 @@ class MainWindow(tk.Tk):
             btn_no = btn_no + 1
             lower_cnt = lower_cnt + 1
         if active_served_customers:
-            btn_no = btn_no + 1
-            button = tk.Button(self.product_frame, text="Yeni Müşteri")
-            button.configure(command=lambda btn=button: self.new_customer_clicked())
-            button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9",
-                             disabledforeground="#a3a3a3")
-            button.configure(font=btn_font, foreground="#000000", highlightbackground="#d9d9d9", highlightcolor="black",
-                             pady="0", width=buttonwidth, height=buttonheight)
-            button.configure(wraplength=200)
-            button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
+            if (glb_merge_customer_flag == None):
+                btn_no = btn_no + 1
+                button = tk.Button(self.product_frame, text="Yeni Müşteri")
+                button.configure(command=lambda btn=button: self.new_customer_clicked())
+                button.configure(activebackground="#ececec", activeforeground="#000000", background="#d9d9d9",
+                                 disabledforeground="#a3a3a3")
+                button.configure(font=btn_font, foreground="#000000", highlightbackground="#d9d9d9", highlightcolor="black",
+                                 pady="0", width=buttonwidth, height=buttonheight)
+                button.configure(wraplength=200)
+                button.grid(row=int(btn_no / col_size), column=btn_no % col_size)
+
         return page_count
 
     def product_frame_def(self):
@@ -899,20 +1075,30 @@ class MainWindow(tk.Tk):
     def functions_frame_def(self):
         global top
         global glb_screensize
+
+        buttons_x_start = 25
+        buttons_x_start = 25
+        buttons_x_distance = 30
+        buttons_y_start = 10
+        buttons_y_distance = 10
         if glb_screensize==800:
             buttons_height = 38
             buttons_width = 150
-            buttons_start=20
-            buttons_distance = 15
-            btn_font = "-family {Segoe UI} -size 12 -weight bold -slant " \
+            buttons_height = 38
+            buttons_width = 150
+            buttons_x_start = 5
+            buttons_x_distance = 3
+            buttons_y_start = 3
+            buttons_y_distance = 3
+            btn_font = "-family {Segoe UI} -size 11 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         else:
-            buttons_height = 60
+            buttons_height = 50
             buttons_width = 220
-            buttons_x_start = 25
+            buttons_x_start = 15
             buttons_x_distance = 30
-            buttons_y_start =10
-            buttons_y_distance = 10
+            buttons_y_start =5
+            buttons_y_distance = 5
             btn_font = "-family {Segoe UI} -size 15 -weight bold -slant " \
                  "roman -underline 0 -overstrike 0"
         self.functions_frame.place(relx=0.001, rely=0.700, relheight=0.200, relwidth=0.980)
@@ -989,9 +1175,28 @@ class MainWindow(tk.Tk):
         ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
         self.btn_clearlasttransaction.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
 
-    def btn_addpackedproduct_clicked(self):
-        add_prepared_package(self)
+        self.btn_mergesales = tk.Button(self.functions_frame)
+        self.set_button_configuration(self.btn_mergesales,btn_font,lambda btn=self.btn_mergesales: self.btn_mergesales_clicked(),"Satış Birleştir")
+        buttons_x_count=buttons_x_count+1
+        xpos=buttons_x_start+buttons_x_count*buttons_x_distance+buttons_x_count*buttons_width
+        ypos=buttons_y_start + buttons_y_count*buttons_y_distance+buttons_y_count*buttons_height
+        self.btn_mergesales.place(x=xpos, y=ypos, height=buttons_height, width=buttons_width)
 
+    def btn_addpackedproduct_clicked(self):
+        error =""
+        barcodeID=db_interface.add_prepared_package(self,glb_sales)
+        if barcodeID != "":
+            error=print_receipt(barcodeID)
+            if error == "":
+                glb_sales.clear()
+                self.update_products_sold()
+                if glb_customer_window == 1:
+                    self.update_products_sold_for_customer()
+                self.btn_cleardara_clicked()
+                self.new_customer_clicked()
+            else:
+                self.message_box_text.delete("1.0", END)
+                self.message_box_text.insert(END,error)
 
     def next_product_button_clicked(self):
         global glb_product_page_count
@@ -1055,44 +1260,59 @@ class MainWindow(tk.Tk):
 
     def customer_button_clicked(self, btn):
         global glb_customer_no
+        global glb_locationid
+        global glb_base_weight
+        global glb_sales_line_id
+        global glb_sales
         global root
+        global glb_merge_customer_flag
+        noerror=False
 
         root.config(cursor="watch")
         root.update()
-        glb_customer_no = btn.cget("text")
-        self.customer_no.delete('1.0', END)
-        self.customer_no.insert(END, glb_customer_no)
-        sales_load(glb_customer_no, -1)
-        self.product_frame_def()
-        self.update_products_sold()
-        if glb_customer_window==1:
-            self.update_products_sold_for_customer()
+        if (glb_merge_customer_flag == MERGE_CUSTOMERS):
+            glb_merge_customer_flag=None
+            merge_customer_no = btn.cget("text")
+            noerror=db_interface.sales_merge(self, merge_customer_no,-1,glb_sales)
+        else:
+            glb_customer_no = btn.cget("text")
+            self.customer_no.delete('1.0', END)
+            self.customer_no.insert(END, glb_customer_no)
+            noerror,glb_sales, glb_sales_line_id, glb_base_weight =db_interface.sales_load(self, glb_customer_no, -1,glb_sales,glb_sales_line_id, glb_locationid, glb_base_weight)
+        if noerror==True:
+            self.product_frame_def()
+            self.update_products_sold()
+            if glb_customer_window==1:
+                self.update_products_sold_for_customer()
         root.config(cursor="")
 
     def btn_send_cashier_clicked(self):
         global glb_customer_no
         global glb_sales_line_id
+        global glb_webHost
         global root
 
         root.config(cursor="watch")
         root.update()
-        sales_hard_delete(glb_customer_no)
-        sales_save(0)
-        glb_sales.clear()
-        self.update_products_sold()
-        if glb_customer_window==1:
-            self.update_products_sold_for_customer()
-        glb_customer_no = 0
-        glb_sales_line_id = 1
-        self.customer_no.delete('1.0', END)
-        self.customer_no.insert(END, "0")
-        try:
-            resp = requests.get("https://"+glb_webHost+"/api/DataRefresh",verify=False)
-        except requests.exceptions.RequestException as e:
-            add_to_log("sendToCahsier","SignalRErr :"+e.msg)
-        self.btn_cleardara_clicked()
-        self.new_customer_clicked()
+        local_save_for_sale(glb_sales, glb_locationid, glb_base_weight)
+        if (db_interface.sales_hard_delete(self, glb_customer_no)):
+            if db_interface.sales_save(self, 0, glb_sales,glb_locationid,glb_base_weight):
+                glb_sales.clear()
+                self.update_products_sold()
+                if glb_customer_window==1:
+                    self.update_products_sold_for_customer()
+                glb_sales_line_id = 1
+                self.customer_no.delete('1.0', END)
+                self.customer_no.insert(END, "0")
+                try:
+                    resp = requests.get(glb_webHost+"/api/DataRefresh",verify=False)
+                except requests.exceptions.RequestException as e:
+                    msg=e.args[0].args[0]
+                    add_to_log("sendToCahsier","SignalRErr :"+msg)
+                self.btn_cleardara_clicked()
+                self.new_customer_clicked()
         root.config(cursor="")
+
 
     def btn_change_user_clicked(self):
         global top
@@ -1100,16 +1320,18 @@ class MainWindow(tk.Tk):
         global glb_customer_no
         global root
         global glb_serialthread
+        global glb_merge_customer_flag
+        global glb_active_served_customers
 
         root.config(cursor="watch")
         root.update()
+        # if there is serial port error then thread stops execution each time change user clicked thread checked and restarted if necessaary
         if glb_serialthread.is_alive() == False:
             glb_serialthread = threading.Thread(target=get_data,
                                                 args=(self, self.scale_display,))
             glb_serialthread.daemon = True
             glb_serialthread.start()
         glb_sales.clear()
-        glb_customer_no = 0
         self.update_products_sold()
         if glb_customer_window ==1:
             self.update_products_sold_for_customer()
@@ -1117,25 +1339,41 @@ class MainWindow(tk.Tk):
         self.customer_no.insert(END, glb_customer_no)
         self.employee_frame_def()
         glb_employees_selected = ""
+        glb_merge_customer_flag=None
+        root.config(cursor="")
+
+    def btn_mergesales_clicked(self):
+        global glb_merge_customer_flag
+
+        root.config(cursor="watch")
+        root.update()
+        glb_merge_customer_flag = MERGE_CUSTOMERS
+        self.customer_frame_def()
         root.config(cursor="")
 
     def call_back_customer_no_clicked(self, btn):
         global root
+        global glb_customer_no
+        global glb_locationid
+        global glb_base_weight
+        global glb_webHost
+        global glb_sales_line_id
+        global glb_sales
+        returnvalue = False
 
         root.config(cursor="watch")
         root.update()
-        salesID = btn.cget("text")
-        glb_sales.clear()
-        glb_sales.clear()
-        sales_load(salesID, 0)
-        sales_update( 0, -1)
-        self.customer_no.delete('1.0', END)
-        self.customer_no.insert(END, glb_customer_no)
-        self.update_products_sold()
-        if glb_customer_window==1:
-            self.update_products_sold_for_customer()
-        self.product_frame_def()
-        resp = requests.get("https://"+glb_webHost+"/api/DataRefresh",verify=False)
+        glb_customer_no = btn.cget("text")
+        returnvalue, glb_sales, glb_sales_line_id, glb_base_weight = db_interface.sales_load(self, glb_customer_no, 0,glb_sales,glb_sales_line_id, glb_locationid, glb_base_weight)
+        if (returnvalue):
+            if db_interface.sales_update(self, 0, -1, glb_sales,glb_locationid,glb_base_weight):
+                self.customer_no.delete('1.0', END)
+                self.customer_no.insert(END, glb_customer_no)
+                self.update_products_sold()
+                if glb_customer_window==1:
+                    self.update_products_sold_for_customer()
+                self.product_frame_def()
+                resp = requests.get(glb_webHost+"/api/DataRefresh",verify=False)
         root.config(cursor="")
 
     def call_back_customer_clicked(self):
@@ -1146,19 +1384,59 @@ class MainWindow(tk.Tk):
         self.call_back_customer_frame_def()
         root.config(cursor="")
 
+    def check_if_customer_no_used(self):
+
+        used_count = len(glb_taken_customer_numbers)
+        if used_count > 0:
+            notfound=False
+            for last_used_index in range(used_count):
+                error, rows = db_interface.db_core.execsql(db_interface.glb_SelectSalesLineExists, (
+                            glb_taken_customer_numbers[last_used_index], 1, datetime.datetime.now().strftime('%Y-%m-%d'), glb_locationid))
+                if (rows[0][0]==0):
+                    notfound=True
+                    break
+            if notfound == False:
+                last_used_index=last_used_index+1
+            for remove_used_ones in range(last_used_index):
+                glb_taken_customer_numbers.remove(glb_taken_customer_numbers[0])
+        available_customer_number_index=0
+        if len(glb_taken_customer_numbers) == 0:
+           available_customer_number_index=-1
+        return available_customer_number_index
+
     def new_customer_clicked(self):
         global top
         global glb_sales_line_id
         global glb_employees_selected
         global glb_customer_no
         global root
+        global glb_taken_customer_numbers
+        get_new_customer_no=False
 
         root.config(cursor="watch")
         root.update()
+        if glb_customer_no != 0:
+            temp = self.check_if_customer_no_used()
+            if temp < 0:
+                get_new_customer_no = True
+            else:
+                temp=glb_taken_customer_numbers[temp]
+                error, rows = db_interface.db_core.execsql(db_interface.glb_SelectSalesLineExists, (temp,1,datetime.datetime.now().strftime('%Y-%m-%d'),glb_locationid))
+                if error =="":
+                    if rows[0][0] > 0:
+                        get_new_customer_no=True
+        else:
+            get_new_customer_no=True
+        if get_new_customer_no:
+            salescounterobj = SalesCounter()
+            returnvalue, temp = salescounterobj.get_counter(self)
+            if temp == -1:
+               return
+            glb_taken_customer_numbers.append(temp)
         self.message_box_text.delete("1.0", END)
         glb_sales.clear()
-        salescounterobj = SalesCounter()
-        glb_customer_no = salescounterobj.get_counter()
+        glb_customer_no = temp
+        self.update_products_sold()
         self.customer_no.delete('1.0', END)
         self.customer_no.insert(END, glb_customer_no)
         glb_sales_line_id = 1
@@ -1166,42 +1444,46 @@ class MainWindow(tk.Tk):
         root.config(cursor="")
 
     def btn_cancelsale_clicked(self):
-        global top
         global glb_sales_line_id
         global glb_employees_selected
         global glb_customer_no
+        global glb_locationid
+        global glb_base_weight
         global root
 
         root.config(cursor="watch")
         root.update()
-        sales_hard_delete(glb_customer_no)
-        sales_save(-2)
-        self.message_box_text.delete("1.0", END)
-        glb_sales.clear()
-        self.update_products_sold()
-        self.customer_no.delete('1.0', END)
-        self.customer_no.insert(END, "0")
-        glb_sales_line_id = 1
-        glb_customer_no = 0
-        self.new_customer_clicked()
+        if db_interface.sales_hard_delete(self, glb_customer_no):
+            if db_interface.sales_save(self, -2,glb_sales,glb_locationid,glb_base_weight):
+                self.message_box_text.delete("1.0", END)
+                glb_sales.clear()
+                self.update_products_sold()
+                self.customer_no.delete('1.0', END)
+                self.customer_no.insert(END, "0")
+                glb_sales_line_id = 1
+                self.new_customer_clicked()
+                self.btn_cleardara_clicked()
         root.config(cursor="")
 
     def btn_savesale_clicked(self):
         global glb_sales_line_id
+        global glb_locationid
+        global glb_base_wight
         global glb_customer_no
         global root
 
         root.config(cursor="watch")
         root.update()
-        sales_hard_delete(glb_customer_no)
-        sales_save(-1)
+        local_save_for_sale(glb_sales,glb_locationid,glb_base_weight)
+        if db_interface.sales_hard_delete(self, glb_customer_no):
+            if db_interface.sales_save(self, -1,glb_sales,glb_locationid, glb_base_weight):
 #        self.message_box_text.delete("1.0", END)
-        glb_sales.clear()
-        self.update_products_sold()
-        self.customer_no.delete('1.0', END)
-        self.customer_no.insert(END, "0")
-        glb_sales_line_id = 1
-        self.btn_change_user_clicked()
+                glb_sales.clear()
+                self.update_products_sold()
+                self.customer_no.delete('1.0', END)
+                self.customer_no.insert(END, "0")
+                glb_sales_line_id = 1
+                self.btn_change_user_clicked()
         root.config(cursor="")
 
     def btn_dara_clicked(self):
@@ -1212,7 +1494,7 @@ class MainWindow(tk.Tk):
         root.update()
         glb_base_weight = glb_base_weight + float(self.scale_display.get("1.0", END).strip("\n"))
         self.scale_display.delete("1.0", END)
-        self.scale_display.insert(END, "0.000".rjust(20))
+        self.scale_display.insert(END, "0.000".rjust(13))
         root.config(cursor="")
 
     def btn_cleardara_clicked(self):
@@ -1259,13 +1541,13 @@ class MainWindow(tk.Tk):
             tt = self.select_reyon.get()
             glb_scaleId = self.select_reyon.current()
             teraziID = [x.teraziID for x in glb_reyonlar if x.ReyonName == tt][0]
-            load_products(teraziID)
-            for child in self.product_frame.winfo_children():
-                child.destroy()
-            self.product_frame_def()
-            self.functions_frame_def()
-            self.select_reyon.current(glb_scaleId)
-            self.prdct_barcode.focus_set()
+            if db_interface.load_products(self, teraziID,glb_product_names):
+                for child in self.product_frame.winfo_children():
+                    child.destroy()
+                self.product_frame_def()
+                self.functions_frame_def()
+                self.select_reyon.current(glb_scaleId)
+                self.prdct_barcode.focus_set()
         else:
             self.message_box_text.insert(END, "Çalışan seçilmeden işleme devam edilemez")
         root.config(cursor="")
@@ -1274,6 +1556,13 @@ class MainWindow(tk.Tk):
         global glb_scaleId
         global glb_employees_selected
         global root
+        global glb_location_id
+        global glb_base_weight
+        global glb_sales_line_id
+        global glb_sales
+        global glb_customer_no
+        global glb_active_served_customers
+        returnvalue = False
 
         root.config(cursor="watch")
         root.update()
@@ -1297,21 +1586,21 @@ class MainWindow(tk.Tk):
             self.message_box_frame_def()
             tt = self.select_reyon.get()
             teraziID = [x.teraziID for x in glb_reyonlar if x.ReyonName == tt][0]
-            load_products(teraziID)
-            for child in self.product_frame.winfo_children():
-                child.destroy()
-            self.customer_frame_def()
-            '''self.product_frame_def()'''
-            self.functions_frame_def()
-            self.select_reyon.current(glb_scaleId)
-            sales_load(glb_customer_no, -1)
-            self.update_products_sold()
-            self.customer_no.delete('1.0', END)
-            self.customer_no.insert(END, glb_customer_no)
-            self.employee_text.delete('1.0', END)
-            self.employee_text.tag_configure('right',justify='right')
-            self.employee_text.insert(END,glb_employees_selected,'right')
-            self.prdct_barcode.focus_set()
+            if db_interface.load_products(self, teraziID,glb_product_names):
+                for child in self.product_frame.winfo_children():
+                    child.destroy()
+                self.customer_frame_def()
+                self.functions_frame_def()
+                self.select_reyon.current(glb_scaleId)
+                returnvalue, glb_sales, glb_sales_line_id, glb_base_weight = db_interface.sales_load(self,glb_customer_no, -1,glb_sales,glb_sales_line_id,glb_locationid,glb_base_weight)
+                if returnvalue:
+                    self.update_products_sold()
+                    self.customer_no.delete('1.0', END)
+                    self.customer_no.insert(END, glb_customer_no)
+                    self.employee_text.delete('1.0', END)
+                    self.employee_text.tag_configure('right',justify='right')
+                    self.employee_text.insert(END,glb_employees_selected,'right')
+                    self.prdct_barcode.focus_set()
         else:
             self.message_box_text.insert(END, "Reyon Seçimini Yapmadan Personel Seçimi Yapılamaz")
         root.config(cursor="")
@@ -1356,11 +1645,12 @@ class MainWindow(tk.Tk):
 
         if (glb_customer_no != 0):
             if glb_serialthread.is_alive() == False:
-                glb_serialthread = threading.Thread(target=get_data,
+                if glb_data_entry == 0:
+                    glb_serialthread = threading.Thread(target=get_data,
                                                     args=(self, self.scale_display,))
-                glb_serialthread.daemon = True
-                glb_serialthread.start()
-                time.sleep(2)
+                    glb_serialthread.daemon = True
+                    glb_serialthread.start()
+                    time.sleep(2)
             salesObj = Sales()
             salesObj.Name = btn.cget("text")
             salesObj.salesID = glb_customer_no
@@ -1368,9 +1658,10 @@ class MainWindow(tk.Tk):
             glb_sales_line_id = glb_sales_line_id + 1
             salesObj.personelID = [x.personelID for x in glb_employees if x.Name == glb_employees_selected][0]
             salesObj.productBarcodeID=[x.productBarcodeID for x in glb_product_names if x.Name == salesObj.Name][0]
+            productCode = int(salesObj.productBarcodeID[8:12])
             """if productBarcodeID is 9999 then amount becomes 1. this is used for products where barcode ID does not exists and price does not depend on weight"""
             amountTxt=""
-            if salesObj.productBarcodeID == "9999":
+            if productCode >= 9900 and productCode <=9928:
                 amountTxt="1.0"
             else:
                 amountTxt = self.scale_display.get("1.0", END).strip("\n")
@@ -1381,7 +1672,7 @@ class MainWindow(tk.Tk):
                 self.message_box_text.insert(END, "Miktar bilgisi hatalı")
                 return
             salesObj.retailPrice = [x.price for x in glb_product_names if x.Name == salesObj.Name][0]
-            salesObj.productID = [x.productID for x in glb_product_names if x.Name == salesObj.Name][0]
+            salesObj.wholeSalePrice= [x.wholeSalePrice for x in glb_product_names if x.Name == salesObj.Name][0]
             salesObj.typeOfCollection = 0
             glb_sales.append(salesObj)
             self.update_products_sold()
@@ -1390,8 +1681,8 @@ class MainWindow(tk.Tk):
         else:
             self.message_box_text.insert(END, "Yeni Müşteri Seçilmeden Ürün Seçimi Yapılamaz")
 
-    def __init__(self, top=None):
-        '''super().__init__()'''
+    def __init__(self, top):
+        super().__init__(useTk=0)
         global glb_screensize
         global glb_serial_object
         global glb_serialthread
@@ -1401,18 +1692,17 @@ class MainWindow(tk.Tk):
         top.geometry("%dx%d+0+0" % (w, h))
         top.attributes("-fullscreen", FALSE)
         # top.geometry("800x480+1571+152")
-        top.title("Terazi Ara Yüzü")
+        top.title("Terazi Ara Yüzü "+"Versiyon:"+glb_version_str)
         top.configure(background="#d9d9d9")
+        load_tables()
         """Create frames"""
-        self.master=top
+        """self.master=top"""
         self.display_frame = tk.Frame(top)
         self.products_sold_frame = tk.Frame(top)
         self.product_frame = tk.Frame(top)
         self.paging_frame = tk.Frame(top)
         self.functions_frame = tk.Frame(top)
         self.message_box_frame = tk.Frame(top)
-        self.message_box_frame_def()
-        load_tables()
         """define screen orientation"""
         self.display_frame.grid(row=0, column=0, columnspan=2)
         self.products_sold_frame.grid(row=1, column=0, rowspan=2)
@@ -1427,6 +1717,7 @@ class MainWindow(tk.Tk):
         self.employee_frame_def()
         self.paging_frame_def()
         self.productssold_frame_def()
+        self.message_box_frame_def()
         """"Customer view window definition """
         if glb_customer_window==1:
             self.cust_window = tk.Toplevel(self.master)
@@ -1487,10 +1778,9 @@ def connect(self, baud, myport ):
             glb_serial_object = serial.Serial(port=myport, baudrate=baud)
     except serial.SerialException as msg:
            messagebox.showinfo("Hata Mesajı", "Terazi ile Bağlantı kurulamadı. Terazinin açık ve bağlı olduğunu kontrol edip tekrar başlatın.")
-           add_to_log("Connect", "Seri Port Hatası")
+           add_to_log("Connect", "Seri Port Hatası "+myport)
            return False
     return True
-
 
 def checkiffloat(strval):
     x=['0','1','2','3','4','5','6','7','8','9','.',]
@@ -1501,7 +1791,6 @@ def checkiffloat(strval):
     if i == len(strval):
         numericval=True
     return numericval
-
 
 def get_data(self, scale_display):
     """This function serves the purpose of collecting data from the serial object and storing
@@ -1517,7 +1806,7 @@ def get_data(self, scale_display):
     while not res and i< 5:
         try:
             if glb_data_entry == 0:
-                if glb_windows_env:
+                if sys.platform == "win32":
                     res=connect(self, 'COM'+str(i), 9600)
                 else:
                     res=connect(self, 9600, '/dev/tty'+'USB'+str(i))
@@ -1532,7 +1821,7 @@ def get_data(self, scale_display):
                 serial_data = serial_data.rstrip('\n')
                 if (serial_data[0:1] == '+') and (serial_data.find("kg",1,len(serial_data))):
                     glb_filter_data = serial_data[1:serial_data.index("kg")]
-                    scale_display.insert(END, '0.000')
+                    scale_display.insert(END, '0.000'.rjust(13))
                     scale_display.delete(1.0, END)
                     floatval=0
                     while not checkiffloat(glb_filter_data) and len(glb_filter_data) > 1:
@@ -1544,23 +1833,13 @@ def get_data(self, scale_display):
                     mydata = "{:10.3f}".format(floatval)
                     mydata = mydata.rjust(13)
                     scale_display.insert(END, mydata)
-                    add_to_log("SeriFilter", "#" + glb_filter_data + "#")
-                    print(glb_filter_data)
+                    # print(glb_filter_data)
                 else:
                    pass
-            except NameError as err:
-                add_to_log("Get data", err.msg)
+            except (NameError, TypeError,UnicodeDecodeError,ValueError):
+                error_message = traceback.format_exc()
+                add_to_log("Get data",error_message)
                 pass
-            except TypeError as err:
-                add_to_log("Get data", err.msg)
-                pass
-            except UnicodeDecodeError as err:
-                exit
-                pass
-            except ValueError as err:
-                add_to_log("Get data", "glb_filter_data= "+glb_filter_data +"  error message ")
-                pass
-
 
 def getopts(argv):
    opts = {}
@@ -1582,7 +1861,30 @@ if __name__ == '__main__':
         glb_customer_window=int(myargs["-customerwindow"])
     if ("-location" in myargs.keys() ):
         glb_locationid = myargs["-location"]
+    if sys.platform == "win32":
+        glb_path = "c:\\users\\hakan\\PycharmProjects\\terazi\\"
+    else:
+        glb_path = "/home/pi/PycharmProjects/terazi/"
+
+
+    db_interface = db_interface()
+    db_interface.wait_for_sql()
+    if (glb_version_str == db_interface.get_version()):
         vp_start_gui()
+    else:
+        if sys.platform == "win32":
+            logpath = "c:\\users\\hakan\\PycharmProjects\\terazi\\"
+        else:
+            logpath = "/home/pi/PycharmProjects/terazi/"
+        print("Yeni Versiyon Üretilmiş. Yeni versiyon indiriliyor lütfen bekleyiniz. ")
+        command=sys.executable+" "+logpath + "ftpget.py"
+        i = 0
+        while i<len(argv):
+            command=command+ " " +argv[i]
+            i = i+1
+        os.system(command)
+
+
 
 
 
